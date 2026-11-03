@@ -22,7 +22,6 @@ Python 3.12；实验使用 PyTorch 2.11.0、torchvision 0.26.0、CUDA 12.8，以
 ```bash
 pip install numpy pyyaml matplotlib
 python mnist/prepare_downloads.py
-python mnist/prepare_legacy.py
 python mnist/linear_baseline.py --epochs 20
 python mnist/cnn_runner.py --epochs 10
 python mnist/tssl_runner.py --epochs 100
@@ -30,7 +29,7 @@ python mnist/spikebp_runner.py --epochs 125
 python mnist/build_comparison.py
 ```
 
-后两种 SNN 需要 CUDA；SpikeBP 可用相同参数加 `--resume` 从最近完成的一轮恢复。数据、下载的无许可证第三方源码、缓存及训练中的检查点不进入 Git。`prepare_downloads.py` 下载 MNIST 和原作者公开代码。此仓库的作者代码目录保留各自许可证；M5 作者仓库未发现许可文件，故不在此再分发，执行准备脚本时从原仓库获取。
+后两种 SNN 需要 CUDA；SpikeBP 可用相同参数加 `--resume` 从最近完成的一轮恢复。数据、下载的无许可证第三方源码、缓存及训练中的检查点不进入 Git。`prepare_downloads.py` 下载 MNIST 和 M5 作者公开代码。SpikeBP 的 MNIST 源码已直接适配新版 Python/PyTorch，保留原作者 MIT 许可；其余历史源码仍保持原样。M5 作者仓库未发现许可文件，故不在此再分发，执行准备脚本时从原仓库获取。
 
 ## 来源
 

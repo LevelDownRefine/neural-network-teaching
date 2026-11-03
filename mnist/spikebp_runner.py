@@ -1,4 +1,4 @@
-"""Train the compatibility copy of Lee et al. with a validation split."""
+"""Train the PyTorch-compatible Lee et al. implementation with a validation split."""
 import argparse
 import json
 import random
@@ -13,7 +13,7 @@ from classification_metrics import calculate
 from common_data import mnist_loaders
 
 ROOT=Path(__file__).resolve().parent
-sys.path.insert(0,str(ROOT/'compat'))
+sys.path.insert(0,str(ROOT/'sources'/'Enabling_Spikebased_Backpropagation-master'/'src'))
 import mnist_LeNet as legacy
 
 def main():

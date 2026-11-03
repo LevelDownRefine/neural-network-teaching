@@ -12,7 +12,7 @@ for name in ('train-images-idx3-ubyte.gz', 'train-labels-idx1-ubyte.gz', 't10k-i
     print(p, p.stat().st_size, flush=True)
 source = root / 'sources'
 source.mkdir(exist_ok=True)
-for name, url in [('tssl_bp', 'https://codeload.github.com/stonezwr/TSSL-BP/zip/refs/heads/master'), ('spike_bp', 'https://codeload.github.com/chan8972/Enabling_Spikebased_Backpropagation/zip/refs/heads/master'), ('cnn_paper', 'https://codeload.github.com/ansh941/MnistSimpleCNN/zip/refs/heads/master')]:
+for name, url in [('cnn_paper', 'https://codeload.github.com/ansh941/MnistSimpleCNN/zip/refs/heads/master')]:
     archive = source / (name + '.zip')
     if not archive.exists():
         urllib.request.urlretrieve(url, archive)

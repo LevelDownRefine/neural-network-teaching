@@ -178,7 +178,7 @@ def train(train_loader, model, criterion, criterion_en, optimizer, epoch, time_s
     for i, (input, target) in enumerate(train_loader):
         # measure data loading time
         data_time.update(time.time() - end)
-        target = target.cuda(async=True)
+        target = target.cuda(non_blocking=True)
         labels = Variable(target.cuda())
         if device_num < 2:
             input_var = Variable(input.cuda())
@@ -209,17 +209,17 @@ def train(train_loader, model, criterion, criterion_en, optimizer, epoch, time_s
 
         # measure accuracy and record loss
         prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
-        losses.update(loss.data[0], input.size(0))
-        top1.update(prec1[0], input.size(0))
-        top5.update(prec5[0], input.size(0))
+        losses.update(loss.item(), input.size(0))
+        top1.update(prec1.item(), input.size(0))
+        top5.update(prec5.item(), input.size(0))
 
         prec1_tr, prec5_tr = accuracy(output.data, target, topk=(1, 5))
-        losses_en.update(loss_en.data[0], input.size(0))
-        top1_tr.update(prec1_tr[0], input.size(0))
-        top5_tr.update(prec5_tr[0], input.size(0))
+        losses_en.update(loss_en.item(), input.size(0))
+        top1_tr.update(prec1_tr.item(), input.size(0))
+        top5_tr.update(prec5_tr.item(), input.size(0))
 
         # compute gradient and do SGD step
-        loss.backward(retain_variables=False)
+        loss.backward()
         optimizer.step()
 
         out1_temp, NG_C1 = None, None
@@ -256,7 +256,7 @@ def validate(val_loader, model, criterion, criterion_en, time_steps, leak):
         # measure data loading time
         data_time.update(time.time() - end)
         labels = Variable(target.cuda())
-        target = target.cuda(async=True)
+        target = target.cuda(non_blocking=True)
         if device_num < 2:
             input_var = Variable(input.cuda())
         else:
@@ -272,10 +272,10 @@ def validate(val_loader, model, criterion, criterion_en, time_steps, leak):
 
         # measure accuracy and record loss
         prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
-        losses.update(loss.data[0], input.size(0))
-        top1.update(prec1[0], input.size(0))
-        top5.update(prec5[0], input.size(0))
-        losses_en_eval.update(loss_en.data[0], input.size(0))
+        losses.update(loss.item(), input.size(0))
+        top1.update(prec1.item(), input.size(0))
+        top5.update(prec5.item(), input.size(0))
+        losses_en_eval.update(loss_en.item(), input.size(0))
 
         # measure elapsed time
         batch_time.update(time.time() - end)
@@ -341,18 +341,20 @@ def accuracy(output, target, topk=(1,)):
 
     res = []
     for k in topk:
-        correct_k = correct[:k].view(-1).float().sum(0)
+        correct_k = correct[:k].reshape(-1).float().sum(0)
         res.append(correct_k.mul_(100.0 / batch_size))
     return res
 
 
 class SpikingNN(torch.autograd.Function):
-    def forward(self, input):
-        self.save_for_backward(input)
+    @staticmethod
+    def forward(ctx, input):
+        ctx.save_for_backward(input)
         return input.gt(0).type(torch.cuda.FloatTensor)
 
-    def backward(self, grad_output):
-        input, = self.saved_tensors
+    @staticmethod
+    def backward(ctx, grad_output):
+        input, = ctx.saved_tensors
         grad_input = grad_output.clone()
         grad_input[input <= 0.0] = 0
         return grad_input
@@ -363,7 +365,7 @@ def LIF_sNeuron(membrane_potential, threshold, l, i):
     ex_membrane = nn.functional.threshold(membrane_potential, threshold, 0)
     membrane_potential = membrane_potential - ex_membrane
     # generate spike
-    out = SpikingNN()(ex_membrane)
+    out = SpikingNN.apply(ex_membrane)
     # decay
     membrane_potential = l * membrane_potential.detach() + membrane_potential - membrane_potential.detach()
     out = out.detach() + torch.div(out, threshold) - torch.div(out, threshold).detach()
@@ -384,7 +386,7 @@ def Pooling_sNeuron(membrane_potential, threshold, i):
     ex_membrane = nn.functional.threshold(membrane_potential, threshold, 0)
     membrane_potential = membrane_potential - ex_membrane # hard reset
     # generate spike
-    out = SpikingNN()(ex_membrane)
+    out = SpikingNN.apply(ex_membrane)
 
     return membrane_potential, out
 
