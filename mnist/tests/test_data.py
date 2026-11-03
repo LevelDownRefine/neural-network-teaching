@@ -1,5 +1,6 @@
 import torch
-from utils import common_data
+from torchvision import transforms
+from data_pipeline import mnist as common_data
 
 
 class FakeMNIST(torch.utils.data.Dataset):
@@ -24,3 +25,11 @@ def test_split_is_deterministic_and_no_leakage(monkeypatch):
     assert train.dataset.indices == train_again.dataset.indices
     assert validation.dataset.indices == validation_again.dataset.indices
     assert set(train.dataset.indices).isdisjoint(validation.dataset.indices)
+
+
+def test_augmentation_is_training_only(monkeypatch):
+    monkeypatch.setattr(common_data.datasets, 'MNIST', FakeMNIST)
+    train, validation, test = common_data.mnist_loaders(64, 42, augmentation=True)
+    assert any(isinstance(t, transforms.RandomRotation) for t in train.dataset.dataset.transform.transforms)
+    assert not any(isinstance(t, transforms.RandomRotation) for t in validation.dataset.dataset.transform.transforms)
+    assert not any(isinstance(t, transforms.RandomRotation) for t in test.dataset.transform.transforms)

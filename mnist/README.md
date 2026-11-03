@@ -31,6 +31,15 @@ uv run --locked python mnist/evaluate.py plot
 uv run --locked pytest -q
 ```
 
+参考作者训练配置的单模型实验可运行：
+
+```bash
+uv run --locked python mnist/train_cnn.py --epochs 150 --augment --ema --tag repro_seed42
+uv run --locked python mnist/train_tssl.py --epochs 100 --seed 42 --tag repro_seed42
+```
+
+CNN 的旋转和位移只作用于训练集；验证集用于选模，官方测试集仅在训练结束后评估。实现使用 torchvision 的随机增强，随机数机制与作者代码不同；保留 50,000/10,000 的训练／验证划分，因而这是对作者设置的近似复现，不是完全相同的实验。两条命令使用 `--resume` 并保留相同参数，可从最近完成的 epoch 恢复；各自输出目录与已有结果分开。若只跑少量批次检查代码，可用 `--max-batches` 和单独的 `--tag`，但这些结果不是性能指标。
+
 后两种 SNN 需要 CUDA；SpikeBP 可用相同参数加 `--resume` 从最近完成的一轮恢复。数据、缓存及训练中的检查点不进入 Git，`prepare_data.py` 只下载 MNIST。`models/` 包含 M5 结构的独立实现和实验需要的 SNN 代码；SpikeBP 源码已直接适配新版 Python/PyTorch。SNN 作者代码保留各自 MIT 许可证。
 
 依赖锁定 PyTorch 2.11.0 和 torchvision 0.26.0：Windows 选择 CUDA 12.8 构建（需要兼容的 NVIDIA 驱动），Linux 选择 CPU 构建，用于轻量测试；Linux 上运行 SNN 需要另行配置匹配的 CUDA PyTorch 环境。GitHub Actions 在 CPU 上运行测试，不下载 MNIST 或执行完整训练。
@@ -41,4 +50,4 @@ uv run --locked pytest -q
 - TSSL-BP：Zhang 与 Li，[Temporal Spike Sequence Learning via Backpropagation](https://papers.nips.cc/paper/2020/file/8bdb5058376143fa358981954e7626b8-Paper.pdf)，[作者代码](https://github.com/stonezwr/TSSL-BP)，MIT 许可。
 - Spike-based BP：Lee 等，[Enabling Spike-Based Backpropagation](https://doi.org/10.3389/fnins.2020.00119)，[作者代码](https://github.com/chan8972/Enabling_Spikebased_Backpropagation)，MIT 许可。
 
-逻辑回归是选用的线性基线，与经典硬阈值感知机并不完全相同。`utils/common_data.py` 与 `utils/classification_metrics.py` 提供公共数据划分及评估，模型训练算法分别保留。`evaluate.py report` 汇总已有结果，`evaluate.py auc logistic_kair` 计算逻辑回归 AUC，`evaluate.py tssl` 评估已保存的 TSSL 最佳权重。
+逻辑回归是选用的线性基线，与经典硬阈值感知机并不完全相同。`data_pipeline/` 管理数据划分及训练增强；`utils/classification_metrics.py` 提供公共评估，模型训练算法分别保留。`evaluate.py report` 汇总已有结果，`evaluate.py auc logistic_kair` 计算逻辑回归 AUC，`evaluate.py tssl` 评估已保存的 TSSL 最佳权重。

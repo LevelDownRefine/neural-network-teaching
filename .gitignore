@@ -8,6 +8,9 @@ mnist/data/
 mnist/_external/
 mnist/compat/
 mnist/results/*_smoke*/
+mnist/results/cnn_m5_repro*/
+mnist/results/tssl_repro*/
 mnist/results/spikebp/
 mnist/results/*.log
 mnist/results/*_pid.txt
+mnist/results/reproduction_status.json

@@ -10,7 +10,7 @@ import torch
 from torch.utils.data import DataLoader, random_split
 from torchvision import datasets, transforms
 from utils.classification_metrics import calculate
-from utils.common_data import mnist_loaders
+from data_pipeline.mnist import mnist_loaders
 
 ROOT=Path(__file__).resolve().parent
 sys.path.insert(0,str(ROOT/'models'/'spikebp'))

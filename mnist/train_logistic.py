@@ -13,7 +13,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, random_split
 from torchvision import datasets, transforms
-from utils.common_data import mnist_loaders
+from data_pipeline.mnist import mnist_loaders
 from utils.classification_metrics import calculate
 
 ROOT = Path(__file__).resolve().parent
