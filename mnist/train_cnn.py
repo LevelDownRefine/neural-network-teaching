@@ -1,4 +1,4 @@
-"""Train the paper's single M5 CNN under our common baseline data split."""
+"""Train an M5 CNN implementation under our common baseline data split."""
 import argparse
 import json
 import random
@@ -13,9 +13,7 @@ from torchvision import datasets, transforms
 from utils.common_data import mnist_loaders
 
 ROOT=Path(__file__).resolve().parent
-import importlib.util
-spec=importlib.util.spec_from_file_location('mnist_paper_m5',ROOT/'_external'/'MnistSimpleCNN-master'/'code'/'models'/'modelM5.py')
-module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); ModelM5=module.ModelM5
+from models.m5 import ModelM5
 from utils.classification_metrics import calculate
 
 def main():
@@ -52,7 +50,7 @@ def main():
         scheduler.step()
     ck=torch.load(out/'best.pt',map_location=device,weights_only=True); model.load_state_dict(ck['model'])
     metrics=evaluate(loaders[2],collect=True)
-    result={'model':'single author ModelM5','config':vars(args),'data_augmentation':False,'ema':False,'selection':'validation accuracy','best_epoch':ck['epoch'],'validation_best_accuracy':best,'test':metrics,'history':history,'runtime_seconds':time.time()-start,'torch':torch.__version__,'device':str(device),'note':'Comparison adaptation, not reproduction of 99.91% ensemble.'}
+    result={'model':'single M5-style CNN','config':vars(args),'data_augmentation':False,'ema':False,'selection':'validation accuracy','best_epoch':ck['epoch'],'validation_best_accuracy':best,'test':metrics,'history':history,'runtime_seconds':time.time()-start,'torch':torch.__version__,'device':str(device),'note':'Independent architecture implementation; comparison adaptation, not reproduction of 99.91% ensemble.'}
     (out/'metrics.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
     print('TEST',json.dumps({'accuracy':metrics['accuracy'],'macro_auc_ovr':metrics['macro_auc_ovr'],'count':metrics['count']}),flush=True)
 

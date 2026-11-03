@@ -30,7 +30,7 @@ python mnist/evaluate.py report
 python mnist/evaluate.py plot
 ```
 
-后两种 SNN 需要 CUDA；SpikeBP 可用相同参数加 `--resume` 从最近完成的一轮恢复。数据、下载的无许可证第三方源码、缓存及训练中的检查点不进入 Git。`prepare_data.py` 下载 MNIST 和 M5 作者公开代码到本地 `_external/`。`models/` 中只保留 MNIST 实验需要的 SNN 代码及其 MIT 许可证；SpikeBP 源码已直接适配新版 Python/PyTorch。M5 作者仓库未发现许可文件，故不在此再分发。
+后两种 SNN 需要 CUDA；SpikeBP 可用相同参数加 `--resume` 从最近完成的一轮恢复。数据、缓存及训练中的检查点不进入 Git，`prepare_data.py` 只下载 MNIST。`models/` 包含 M5 结构的独立实现和实验需要的 SNN 代码；SpikeBP 源码已直接适配新版 Python/PyTorch。SNN 作者代码保留各自 MIT 许可证。
 
 ## 来源
 

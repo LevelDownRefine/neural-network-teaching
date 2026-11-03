@@ -1,6 +1,5 @@
 from pathlib import Path
 import urllib.request
-import zipfile
 import gzip
 import shutil
 
@@ -16,12 +15,3 @@ for name in ('train-images-idx3-ubyte.gz', 'train-labels-idx1-ubyte.gz', 't10k-i
         with gzip.open(p, 'rb') as src, unpacked.open('wb') as dst:
             shutil.copyfileobj(src, dst)
     print(p, p.stat().st_size, flush=True)
-source = root / '_external'
-source.mkdir(exist_ok=True)
-for name, url in [('cnn_paper', 'https://codeload.github.com/ansh941/MnistSimpleCNN/zip/refs/heads/master')]:
-    archive = source / (name + '.zip')
-    if not archive.exists():
-        urllib.request.urlretrieve(url, archive)
-    with zipfile.ZipFile(archive) as z:
-        z.extractall(source)
-    print(archive, archive.stat().st_size, flush=True)
