@@ -1,0 +1,44 @@
+{
+  "available": [
+    {
+      "model": "logistic",
+      "test_accuracy": 0.9241,
+      "test_error": 0.07589999999999997,
+      "correct": 9241,
+      "total": 10000,
+      "macro_precision": 0.923141115984049,
+      "macro_recall": 0.923076996781344,
+      "macro_f1": 0.9229797940069538,
+      "macro_auc_ovr": 0.9937851047406141,
+      "source": "logistic_kair/metrics.json"
+    },
+    {
+      "model": "cnn_m5",
+      "test_accuracy": 0.9952,
+      "test_error": 0.0048000000000000265,
+      "correct": 9952,
+      "total": 10000,
+      "macro_precision": 0.9952438914838752,
+      "macro_recall": 0.9951291769622781,
+      "macro_f1": 0.9951828005930297,
+      "macro_auc_ovr": 0.9999462310530001,
+      "source": "cnn_m5_kair/metrics.json"
+    },
+    {
+      "model": "tssl",
+      "test_accuracy": 0.9932,
+      "test_error": 0.006800000000000028,
+      "correct": 9932,
+      "total": 10000,
+      "macro_precision": 0.993206432505722,
+      "macro_recall": 0.9931207070807664,
+      "macro_f1": 0.9931527243955802,
+      "macro_auc_ovr": 0.9991154293258301,
+      "source": "tssl/classification.json"
+    }
+  ],
+  "missing": [
+    "spikebp"
+  ],
+  "note": "TSSL split seed 3; other models seed 42. AUC uses softmax scores; SNN score semantics differ. SpikeBP is pending until full test evaluation."
+}

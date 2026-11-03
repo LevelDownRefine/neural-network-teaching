@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv/
+gpu_packages/
+mnist/data/
+mnist/sources/*.zip
+mnist/sources/MnistSimpleCNN-master/
+mnist/compat/
+mnist/results/*_smoke*/
+mnist/results/spikebp/
+mnist/results/*.log
+mnist/results/*_pid.txt
