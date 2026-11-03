@@ -9,7 +9,9 @@
 | 多类逻辑回归 | 92.41% | 0.993785 | 已完成，单次运行 |
 | 单个 M5 CNN | 99.52% | 0.999946 | 已完成，单次运行 |
 | TSSL-BP SNN | 99.32% | 0.999115 | 中断训练后选择第 53 轮权重评估 |
-| Spike-based BP SNN | 待完成 | 待完成 | 正式训练中 |
+| Spike-based BP SNN | 待完成 | 待完成 | 已停止训练 |
+
+另一个 M5 单模型实验使用数据增强与 EMA，在 seed 42 的训练／验证划分下取得测试准确率 99.69%（单次运行）；新的 TSSL 同划分实验正在训练。
 
 各类别指标、混淆矩阵和准确率在 `results/comparison/`；完整结果与最佳权重位于各模型结果目录。AUC 使用类别得分经 softmax 后计算。TSSL 使用 seed 3 划分训练与验证集，逻辑回归和 CNN 使用 seed 42，不能视为完全受控的代际比较。
 
@@ -36,9 +38,12 @@ uv run --locked pytest -q
 ```bash
 uv run --locked python mnist/train_cnn.py --epochs 150 --augment --ema --tag repro_seed42
 uv run --locked python mnist/train_tssl.py --epochs 100 --seed 42 --tag repro_seed42
+uv run --locked python mnist/train_cnn.py --architecture sopcnn --epochs 10 --batch-size 64 --augment --tag pilot_seed42
 ```
 
 CNN 的旋转和位移只作用于训练集；验证集用于选模，官方测试集仅在训练结束后评估。实现使用 torchvision 的随机增强，随机数机制与作者代码不同；保留 50,000/10,000 的训练／验证划分，因而这是对作者设置的近似复现，不是完全相同的实验。两条命令使用 `--resume` 并保留相同参数，可从最近完成的 epoch 恢复；各自输出目录与已有结果分开。若只跑少量批次检查代码，可用 `--max-batches` 和单独的 `--tag`，但这些结果不是性能指标。
+
+SOPCNN 试验采用下述第三方实现的四层卷积、2048 维全连接层和 0.8 dropout，复用本项目的 Adam、数据增强、验证集选模及评估流程。第三方报告的 99.78% 使用 SGD + Lookahead；该试验没有复现其优化器或训练时长，也不等同论文的精确复现。10 轮仅用于初步检查，不能保证达到文献指标。
 
 后两种 SNN 需要 CUDA；SpikeBP 可用相同参数加 `--resume` 从最近完成的一轮恢复。数据、缓存及训练中的检查点不进入 Git，`prepare_data.py` 只下载 MNIST。`models/` 包含 M5 结构的独立实现和实验需要的 SNN 代码；SpikeBP 源码已直接适配新版 Python/PyTorch。SNN 作者代码保留各自 MIT 许可证。
 
@@ -47,6 +52,7 @@ CNN 的旋转和位移只作用于训练集；验证集用于选模，官方测�
 ## 来源
 
 - CNN：An 等，[An Ensemble of Simple Convolutional Neural Network Models for MNIST Digit Recognition](https://arxiv.org/abs/2008.10400)，[作者代码](https://github.com/ansh941/MnistSimpleCNN)。
+- SOPCNN：Assiri，[Stochastic Optimization of Plain Convolutional Neural Networks with Simple methods](https://arxiv.org/abs/2001.08856)，[第三方 PyTorch 实现](https://github.com/junaidaliop/MNIST-SOPCNN)。
 - TSSL-BP：Zhang 与 Li，[Temporal Spike Sequence Learning via Backpropagation](https://papers.nips.cc/paper/2020/file/8bdb5058376143fa358981954e7626b8-Paper.pdf)，[作者代码](https://github.com/stonezwr/TSSL-BP)，MIT 许可。
 - Spike-based BP：Lee 等，[Enabling Spike-Based Backpropagation](https://doi.org/10.3389/fnins.2020.00119)，[作者代码](https://github.com/chan8972/Enabling_Spikebased_Backpropagation)，MIT 许可。
 

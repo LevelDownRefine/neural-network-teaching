@@ -9,6 +9,8 @@ mnist/_external/
 mnist/compat/
 mnist/results/*_smoke*/
 mnist/results/cnn_m5_repro*/
+mnist/results/cnn_sopcnn_*/
+mnist/results/sopcnn_queue_status.json
 mnist/results/tssl_repro*/
 mnist/results/spikebp/
 mnist/results/*.log

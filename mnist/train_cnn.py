@@ -15,11 +15,14 @@ from data_pipeline.mnist import mnist_loaders
 
 ROOT=Path(__file__).resolve().parent
 from models.m5 import ModelM5
+from models.sopcnn import ModelSOPCNN
 from utils.classification_metrics import calculate
 from utils.ema import ParameterEMA
 
 def main():
     parser=argparse.ArgumentParser()
+    parser.add_argument('--architecture',choices=('m5','sopcnn'),default='m5')
+    parser.add_argument('--device',choices=('auto','cpu','cuda'),default='auto')
     parser.add_argument('--epochs',type=int,default=10)
     parser.add_argument('--batch-size',type=int,default=120)
     parser.add_argument('--lr',type=float,default=.001)
@@ -31,14 +34,14 @@ def main():
     parser.add_argument('--max-batches',type=int,default=0,help='smoke test only')
     args=parser.parse_args()
     random.seed(args.seed); np.random.seed(args.seed); torch.manual_seed(args.seed); torch.cuda.manual_seed_all(args.seed)
-    device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device=torch.device(('cuda' if torch.cuda.is_available() else 'cpu') if args.device=='auto' else args.device)
     if args.tag and not all(c.isalnum() or c in '-_' for c in args.tag): raise ValueError('invalid tag')
-    if (args.augment or args.ema or args.max_batches) and not args.tag: raise ValueError('use --tag to preserve previous results')
+    if (args.augment or args.ema or args.max_batches or args.architecture!='m5') and not args.tag: raise ValueError('use --tag to preserve previous results')
     loaders=mnist_loaders(args.batch_size,args.seed,augmentation=args.augment)
-    model=ModelM5().to(device); opt=torch.optim.Adam(model.parameters(),lr=args.lr)
+    model=(ModelM5() if args.architecture=='m5' else ModelSOPCNN()).to(device); opt=torch.optim.Adam(model.parameters(),lr=args.lr)
     scheduler=torch.optim.lr_scheduler.ExponentialLR(opt,gamma=.98)
     ema=ParameterEMA(model) if args.ema else None
-    out=ROOT/'results'/('cnn_m5_'+args.tag if args.tag else 'cnn_m5_kair'); out.mkdir(parents=True,exist_ok=True)
+    out=ROOT/'results'/('cnn_'+args.architecture+'_'+args.tag if args.tag else 'cnn_m5_kair'); out.mkdir(parents=True,exist_ok=True)
     def evaluate(loader,collect=False):
         model.eval(); n=correct=0; ys=[]; scores=[]
         with torch.no_grad():
@@ -50,6 +53,7 @@ def main():
     best=-1.; history=[]; start=time.time(); start_epoch=0
     if args.resume:
         state=torch.load(out/'latest.pt',map_location='cpu',weights_only=False)
+        if state['config'].get('architecture','m5')!=args.architecture: raise ValueError('resume architecture differs')
         for key in ('batch_size','lr','seed','augment','ema','max_batches'):
             if state['config'][key]!=getattr(args,key): raise ValueError('resume configuration differs: '+key)
         model.load_state_dict(state['model']); opt.load_state_dict(state['optimizer']); scheduler.load_state_dict(state['scheduler'])
@@ -75,7 +79,7 @@ def main():
         temp=out/'latest.tmp'; torch.save(state,temp); temp.replace(out/'latest.pt')
     ck=torch.load(out/'best.pt',map_location=device,weights_only=True); model.load_state_dict(ck['model'])
     metrics=evaluate(loaders[2],collect=True)
-    result={'model':'single M5-style CNN','config':vars(args),'data_augmentation':args.augment,'ema':args.ema,'selection':'validation accuracy','best_epoch':ck['epoch'],'validation_best_accuracy':best,'test':metrics,'history':history,'runtime_seconds':time.time()-start,'torch':torch.__version__,'device':str(device),'note':'Independent architecture implementation; comparison adaptation, not reproduction of 99.91% ensemble.'}
+    result={'model':'single M5-style CNN' if args.architecture=='m5' else 'SOPCNN-style CNN','config':vars(args),'data_augmentation':args.augment,'ema':args.ema,'selection':'validation accuracy','best_epoch':ck['epoch'],'validation_best_accuracy':best,'test':metrics,'history':history,'runtime_seconds':time.time()-start,'torch':torch.__version__,'device':str(device),'note':'Independent implementation and common-split adaptation; not an exact paper reproduction.'}
     (out/'metrics.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
     print('TEST',json.dumps({'accuracy':metrics['accuracy'],'macro_auc_ovr':metrics['macro_auc_ovr'],'count':metrics['count']}),flush=True)
 
