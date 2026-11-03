@@ -17,20 +17,23 @@ CNN 使用论文的单个 M5 架构，但未使用论文集成、数据增强或
 
 ## 安装与使用
 
-Python 3.12；实验使用 PyTorch 2.11.0、torchvision 0.26.0、CUDA 12.8，以及 numpy、PyYAML、matplotlib。请根据机器安装匹配的 PyTorch 与 torchvision。
+Python 3.12；使用 [uv](https://docs.astral.sh/uv/) 管理依赖与锁文件。在仓库根目录执行：
 
 ```bash
-pip install numpy pyyaml matplotlib
-python mnist/prepare_data.py
-python mnist/train_logistic.py --epochs 20
-python mnist/train_cnn.py --epochs 10
-python mnist/train_tssl.py --epochs 100
-python mnist/train_spikebp.py --epochs 125
-python mnist/evaluate.py report
-python mnist/evaluate.py plot
+uv sync --locked
+uv run --locked python mnist/prepare_data.py
+uv run --locked python mnist/train_logistic.py --epochs 20
+uv run --locked python mnist/train_cnn.py --epochs 10
+uv run --locked python mnist/train_tssl.py --epochs 100
+uv run --locked python mnist/train_spikebp.py --epochs 125
+uv run --locked python mnist/evaluate.py report
+uv run --locked python mnist/evaluate.py plot
+uv run --locked pytest -q
 ```
 
 后两种 SNN 需要 CUDA；SpikeBP 可用相同参数加 `--resume` 从最近完成的一轮恢复。数据、缓存及训练中的检查点不进入 Git，`prepare_data.py` 只下载 MNIST。`models/` 包含 M5 结构的独立实现和实验需要的 SNN 代码；SpikeBP 源码已直接适配新版 Python/PyTorch。SNN 作者代码保留各自 MIT 许可证。
+
+依赖锁定 PyTorch 2.11.0 和 torchvision 0.26.0：Windows 选择 CUDA 12.8 构建（需要兼容的 NVIDIA 驱动），Linux 选择 CPU 构建，用于轻量测试；Linux 上运行 SNN 需要另行配置匹配的 CUDA PyTorch 环境。GitHub Actions 在 CPU 上运行测试，不下载 MNIST 或执行完整训练。
 
 ## 来源
 
