@@ -6,7 +6,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 
-ROOT=Path(__file__).resolve().parent
+ROOT=Path(__file__).resolve().parent.parent
 for model in ('logistic','mlp','logistic_kair','mlp_kair','cnn_m5_kair'):
     path=ROOT/'results'/model/'metrics.json'
     if not path.exists(): continue

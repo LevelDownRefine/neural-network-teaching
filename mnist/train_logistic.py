@@ -13,8 +13,8 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, random_split
 from torchvision import datasets, transforms
-from common_data import mnist_loaders
-from classification_metrics import calculate
+from utils.common_data import mnist_loaders
+from utils.classification_metrics import calculate
 
 ROOT = Path(__file__).resolve().parent
 

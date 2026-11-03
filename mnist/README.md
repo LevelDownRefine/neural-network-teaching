@@ -21,15 +21,16 @@ Python 3.12；实验使用 PyTorch 2.11.0、torchvision 0.26.0、CUDA 12.8，以
 
 ```bash
 pip install numpy pyyaml matplotlib
-python mnist/prepare_downloads.py
-python mnist/linear_baseline.py --epochs 20
-python mnist/cnn_runner.py --epochs 10
-python mnist/tssl_runner.py --epochs 100
-python mnist/spikebp_runner.py --epochs 125
-python mnist/build_comparison.py
+python mnist/prepare_data.py
+python mnist/train_logistic.py --epochs 20
+python mnist/train_cnn.py --epochs 10
+python mnist/train_tssl.py --epochs 100
+python mnist/train_spikebp.py --epochs 125
+python mnist/evaluate.py report
+python mnist/evaluate.py plot
 ```
 
-后两种 SNN 需要 CUDA；SpikeBP 可用相同参数加 `--resume` 从最近完成的一轮恢复。数据、下载的无许可证第三方源码、缓存及训练中的检查点不进入 Git。`prepare_downloads.py` 下载 MNIST 和 M5 作者公开代码。SpikeBP 的 MNIST 源码已直接适配新版 Python/PyTorch，保留原作者 MIT 许可；其余历史源码仍保持原样。M5 作者仓库未发现许可文件，故不在此再分发，执行准备脚本时从原仓库获取。
+后两种 SNN 需要 CUDA；SpikeBP 可用相同参数加 `--resume` 从最近完成的一轮恢复。数据、下载的无许可证第三方源码、缓存及训练中的检查点不进入 Git。`prepare_data.py` 下载 MNIST 和 M5 作者公开代码到本地 `_external/`。`models/` 中只保留 MNIST 实验需要的 SNN 代码及其 MIT 许可证；SpikeBP 源码已直接适配新版 Python/PyTorch。M5 作者仓库未发现许可文件，故不在此再分发。
 
 ## 来源
 
@@ -37,4 +38,4 @@ python mnist/build_comparison.py
 - TSSL-BP：Zhang 与 Li，[Temporal Spike Sequence Learning via Backpropagation](https://papers.nips.cc/paper/2020/file/8bdb5058376143fa358981954e7626b8-Paper.pdf)，[作者代码](https://github.com/stonezwr/TSSL-BP)，MIT 许可。
 - Spike-based BP：Lee 等，[Enabling Spike-Based Backpropagation](https://doi.org/10.3389/fnins.2020.00119)，[作者代码](https://github.com/chan8972/Enabling_Spikebased_Backpropagation)，MIT 许可。
 
-逻辑回归是选用的线性基线，与经典硬阈值感知机并不完全相同。`common_data.py` 与 `classification_metrics.py` 提供公共数据划分及评估，模型训练算法分别保留。
+逻辑回归是选用的线性基线，与经典硬阈值感知机并不完全相同。`utils/common_data.py` 与 `utils/classification_metrics.py` 提供公共数据划分及评估，模型训练算法分别保留。`evaluate.py report` 汇总已有结果，`evaluate.py auc logistic_kair` 计算逻辑回归 AUC，`evaluate.py tssl` 评估已保存的 TSSL 最佳权重。

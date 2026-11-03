@@ -5,7 +5,7 @@ import torch
 from torch.utils.data import DataLoader, random_split
 from torchvision import datasets, transforms
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent
 
 def mnist_loaders(batch_size, seed=42, normalization=None):
     operations = [transforms.ToTensor()]

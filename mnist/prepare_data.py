@@ -1,6 +1,8 @@
 from pathlib import Path
 import urllib.request
 import zipfile
+import gzip
+import shutil
 
 root = Path(__file__).resolve().parent
 raw = root / 'data' / 'MNIST' / 'raw'
@@ -9,8 +11,12 @@ for name in ('train-images-idx3-ubyte.gz', 'train-labels-idx1-ubyte.gz', 't10k-i
     p = raw / name
     if not p.exists():
         urllib.request.urlretrieve('https://ossci-datasets.s3.amazonaws.com/mnist/' + name, p)
+    unpacked = p.with_suffix('')
+    if not unpacked.exists():
+        with gzip.open(p, 'rb') as src, unpacked.open('wb') as dst:
+            shutil.copyfileobj(src, dst)
     print(p, p.stat().st_size, flush=True)
-source = root / 'sources'
+source = root / '_external'
 source.mkdir(exist_ok=True)
 for name, url in [('cnn_paper', 'https://codeload.github.com/ansh941/MnistSimpleCNN/zip/refs/heads/master')]:
     archive = source / (name + '.zip')

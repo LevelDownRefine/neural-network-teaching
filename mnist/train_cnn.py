@@ -10,12 +10,13 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, random_split
 from torchvision import datasets, transforms
-from common_data import mnist_loaders
+from utils.common_data import mnist_loaders
 
 ROOT=Path(__file__).resolve().parent
-sys.path.insert(0,str(ROOT/'sources'/'MnistSimpleCNN-master'/'code'))
-from models.modelM5 import ModelM5
-from classification_metrics import calculate
+import importlib.util
+spec=importlib.util.spec_from_file_location('mnist_paper_m5',ROOT/'_external'/'MnistSimpleCNN-master'/'code'/'models'/'modelM5.py')
+module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); ModelM5=module.ModelM5
+from utils.classification_metrics import calculate
 
 def main():
     parser=argparse.ArgumentParser()

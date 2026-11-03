@@ -6,13 +6,13 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-SRC = ROOT / 'sources' / 'TSSL-BP-master'
+SRC = ROOT / 'models' / 'tssl'
 sys.path.insert(0, str(SRC))
 import numpy as np
 import torch
 import yaml
 from torchvision import datasets, transforms
-from common_data import mnist_loaders
+from utils.common_data import mnist_loaders
 from torch.utils.data import DataLoader, random_split
 import cnns
 import global_v as glv

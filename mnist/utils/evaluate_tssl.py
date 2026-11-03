@@ -9,8 +9,8 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from classification_metrics import calculate
 
-root=Path(__file__).resolve().parent
-src=root/'sources'/'TSSL-BP-master'; sys.path.insert(0,str(src))
+root=Path(__file__).resolve().parent.parent
+src=root/'models'/'tssl'; sys.path.insert(0,str(src))
 import cnns
 import global_v as glv
 

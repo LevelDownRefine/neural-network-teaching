@@ -8,7 +8,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torchvision import datasets,transforms
 
-root=Path(__file__).resolve().parent
+root=Path(__file__).resolve().parent.parent
 name=sys.argv[1] if len(sys.argv)>1 else 'logistic'
 folder=root/'results'/name
 ck=torch.load(folder/'best.pt',map_location='cpu',weights_only=True)

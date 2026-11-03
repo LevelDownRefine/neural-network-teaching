@@ -3,8 +3,7 @@ __pycache__/
 .venv/
 gpu_packages/
 mnist/data/
-mnist/sources/*.zip
-mnist/sources/MnistSimpleCNN-master/
+mnist/_external/
 mnist/compat/
 mnist/results/*_smoke*/
 mnist/results/spikebp/

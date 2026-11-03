@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import numpy as np
 
-ROOT=Path(__file__).resolve().parent
+ROOT=Path(__file__).resolve().parent.parent
 OUT=ROOT/'results'/'comparison'
 SOURCES=[('logistic','logistic_kair/metrics.json','test','logistic_kair/auc.json'),
          ('cnn_m5','cnn_m5_kair/metrics.json','test',None),

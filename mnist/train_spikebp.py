@@ -9,11 +9,11 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, random_split
 from torchvision import datasets, transforms
-from classification_metrics import calculate
-from common_data import mnist_loaders
+from utils.classification_metrics import calculate
+from utils.common_data import mnist_loaders
 
 ROOT=Path(__file__).resolve().parent
-sys.path.insert(0,str(ROOT/'sources'/'Enabling_Spikebased_Backpropagation-master'/'src'))
+sys.path.insert(0,str(ROOT/'models'/'spikebp'))
 import mnist_LeNet as legacy
 
 def main():
