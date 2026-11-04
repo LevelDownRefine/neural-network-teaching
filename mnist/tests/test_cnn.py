@@ -3,7 +3,6 @@ from pathlib import Path
 import torch
 
 from models.m5 import ModelM5
-from models.sopcnn import ModelSOPCNN
 from models.tssl_cnn import TSSLCNN
 
 
@@ -12,15 +11,6 @@ def test_saved_cnn_checkpoint_loads_and_predicts():
     checkpoint = torch.load(path, map_location='cpu', weights_only=True)
     model = ModelM5().eval()
     model.load_state_dict(checkpoint['model'], strict=True)
-    with torch.no_grad():
-        output = model(torch.zeros(2, 1, 28, 28))
-    assert output.shape == (2, 10)
-    assert torch.isfinite(output).all()
-    assert torch.allclose(output.exp().sum(dim=1), torch.ones(2), atol=1e-6)
-
-
-def test_sopcnn_outputs_valid_class_probabilities():
-    model = ModelSOPCNN().eval()
     with torch.no_grad():
         output = model(torch.zeros(2, 1, 28, 28))
     assert output.shape == (2, 10)

@@ -9,7 +9,6 @@ mnist/_external/
 mnist/compat/
 mnist/results/*_smoke*/
 mnist/results/cnn_m5_repro*/
-mnist/results/cnn_sopcnn_*/
 mnist/results/cnn_m5_small_*/
 mnist/results/cnn_tssl_cnn_*/
 mnist/results/aligned_status.json
@@ -19,7 +18,6 @@ mnist/results/plif_*/
 mnist/results/plif_status.json
 mnist/results/matched_status.json
 mnist/results/official_status.json
-mnist/results/sopcnn_queue_status.json
 mnist/results/tssl_repro*/
 mnist/results/spikebp/
 mnist/results/*.log
