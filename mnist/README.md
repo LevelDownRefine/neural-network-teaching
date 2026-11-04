@@ -45,6 +45,13 @@ CNN 的旋转和位移只作用于训练集；验证集用于选模，官方测�
 
 SOPCNN 试验采用下述第三方实现的四层卷积、2048 维全连接层和 0.8 dropout，复用本项目的 Adam、数据增强、验证集选模及评估流程。第三方报告的 99.78% 使用 SGD + Lookahead；该试验没有复现其优化器或训练时长，也不等同论文的精确复现。10 轮仅用于初步检查，不能保证达到文献指标。
 
+参数量对照增加两个独立模型：`--architecture m5_small` 将 M5 通道改为 14、30、37、48、69，共 210,376 个可训练参数，对照原 TSSL 的 210,375 个；TSSL 使用 `--hidden-size 1712` 将隐藏层从 300 扩大到 1712，共 1,128,175 个参数，对照 M5 的 1,128,180 个。两者各自沿用原模型训练设置，使用 seed 42 的同一数据划分和公共测试指标。参数量接近不意味着层结构、计算量或训练策略相同。
+
+```bash
+uv run --locked python mnist/train_cnn.py --architecture m5_small --epochs 150 --augment --ema --seed 42 --tag matched_seed42
+uv run --locked python mnist/train_tssl.py --hidden-size 1712 --epochs 100 --seed 42 --tag matched_seed42
+```
+
 后两种 SNN 需要 CUDA；SpikeBP 可用相同参数加 `--resume` 从最近完成的一轮恢复。数据、缓存及训练中的检查点不进入 Git，`prepare_data.py` 只下载 MNIST。`models/` 包含 M5 结构的独立实现和实验需要的 SNN 代码；SpikeBP 源码已直接适配新版 Python/PyTorch。SNN 作者代码保留各自 MIT 许可证。
 
 依赖锁定 PyTorch 2.11.0 和 torchvision 0.26.0：Windows 选择 CUDA 12.8 构建（需要兼容的 NVIDIA 驱动），Linux 选择 CPU 构建，用于轻量测试；Linux 上运行 SNN 需要另行配置匹配的 CUDA PyTorch 环境。GitHub Actions 在 CPU 上运行测试，不下载 MNIST 或执行完整训练。

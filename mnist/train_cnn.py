@@ -21,7 +21,7 @@ from utils.ema import ParameterEMA
 
 def main():
     parser=argparse.ArgumentParser()
-    parser.add_argument('--architecture',choices=('m5','sopcnn'),default='m5')
+    parser.add_argument('--architecture',choices=('m5','m5_small','sopcnn'),default='m5')
     parser.add_argument('--device',choices=('auto','cpu','cuda'),default='auto')
     parser.add_argument('--epochs',type=int,default=10)
     parser.add_argument('--batch-size',type=int,default=120)
@@ -38,7 +38,7 @@ def main():
     if args.tag and not all(c.isalnum() or c in '-_' for c in args.tag): raise ValueError('invalid tag')
     if (args.augment or args.ema or args.max_batches or args.architecture!='m5') and not args.tag: raise ValueError('use --tag to preserve previous results')
     loaders=mnist_loaders(args.batch_size,args.seed,augmentation=args.augment)
-    model=(ModelM5() if args.architecture=='m5' else ModelSOPCNN()).to(device); opt=torch.optim.Adam(model.parameters(),lr=args.lr)
+    model=(ModelM5() if args.architecture=='m5' else ModelM5((1,14,30,37,48,69)) if args.architecture=='m5_small' else ModelSOPCNN()).to(device); opt=torch.optim.Adam(model.parameters(),lr=args.lr)
     scheduler=torch.optim.lr_scheduler.ExponentialLR(opt,gamma=.98)
     ema=ParameterEMA(model) if args.ema else None
     out=ROOT/'results'/('cnn_'+args.architecture+'_'+args.tag if args.tag else 'cnn_m5_kair'); out.mkdir(parents=True,exist_ok=True)
@@ -79,7 +79,7 @@ def main():
         temp=out/'latest.tmp'; torch.save(state,temp); temp.replace(out/'latest.pt')
     ck=torch.load(out/'best.pt',map_location=device,weights_only=True); model.load_state_dict(ck['model'])
     metrics=evaluate(loaders[2],collect=True)
-    result={'model':'single M5-style CNN' if args.architecture=='m5' else 'SOPCNN-style CNN','config':vars(args),'data_augmentation':args.augment,'ema':args.ema,'selection':'validation accuracy','best_epoch':ck['epoch'],'validation_best_accuracy':best,'test':metrics,'history':history,'runtime_seconds':time.time()-start,'torch':torch.__version__,'device':str(device),'note':'Independent implementation and common-split adaptation; not an exact paper reproduction.'}
+    result={'model':args.architecture,'parameter_count':sum(p.numel() for p in model.parameters() if p.requires_grad),'config':vars(args),'data_augmentation':args.augment,'ema':args.ema,'selection':'validation accuracy','best_epoch':ck['epoch'],'validation_best_accuracy':best,'test':metrics,'history':history,'runtime_seconds':time.time()-start,'torch':torch.__version__,'device':str(device),'note':'Independent implementation and common-split adaptation; not an exact paper reproduction.'}
     (out/'metrics.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
     print('TEST',json.dumps({'accuracy':metrics['accuracy'],'macro_auc_ovr':metrics['macro_auc_ovr'],'count':metrics['count']}),flush=True)
 

@@ -24,6 +24,7 @@ def main():
     p.add_argument('--epochs', type=int, default=100)
     p.add_argument('--batch-size', type=int, default=50)
     p.add_argument('--seed', type=int, default=3)
+    p.add_argument('--hidden-size', type=int, default=300)
     p.add_argument('--max-batches', type=int, default=0, help='smoke test only')
     p.add_argument('--cpu-smoke', action='store_true', help='test original CUDA-hardcoded code on CPU; not a reproduction run')
     p.add_argument('--tag',default='')
@@ -37,6 +38,7 @@ def main():
     device='cpu' if a.cpu_smoke else 'cuda'
     random.seed(a.seed); np.random.seed(a.seed); torch.manual_seed(a.seed); torch.cuda.manual_seed_all(a.seed)
     cfg=yaml.safe_load((SRC/'Networks'/'MNIST_CNN.yaml').read_text()); nc=cfg['Network']; nc['batch_size']=a.batch_size
+    cfg['Layers']['FC_1']['n_outputs']=a.hidden_size; cfg['Layers']['output']['n_inputs']=a.hidden_size
     glv.init(nc['n_steps'],nc['tau_s'])
     loaders=mnist_loaders(a.batch_size,a.seed,normalization=((0.1307,), (0.3081,)))
     net=cnns.Network(nc,cfg['Layers'],[1,28,28]).cuda(); err=loss_f.SpikeLoss(nc).cuda()
@@ -44,6 +46,7 @@ def main():
     desired=torch.tensor([0,1,1,1,1],device=device).view(1,1,1,1,steps)
     desired=loss_f.psp(desired,nc).view(1,1,1,steps)
     if a.tag and not all(c.isalnum() or c in '-_' for c in a.tag): raise ValueError('invalid tag')
+    if a.hidden_size != 300 and not a.tag: raise ValueError('use --tag to preserve previous results')
     out=ROOT/'results'/(('tssl_smoke' if a.max_batches else 'tssl')+('_'+a.tag if a.tag else '')); out.mkdir(parents=True,exist_ok=True)
     if not a.tag and not a.max_batches and (out/'best.pt').exists(): raise ValueError('use --tag to avoid overwriting existing checkpoint')
     def run(loader, epoch, training, collect=False):
@@ -62,6 +65,7 @@ def main():
     best=-1; history=[]; start_epoch=0
     if a.resume:
         state=torch.load(out/'latest.pt',map_location='cpu',weights_only=False)
+        if state['config'].get('hidden_size',300)!=a.hidden_size: raise ValueError('resume configuration differs: hidden_size')
         for key in ('batch_size','seed','max_batches','cpu_smoke'):
             if state['config'][key]!=getattr(a,key): raise ValueError('resume configuration differs: '+key)
         net.load_state_dict(state['net']); opt.load_state_dict(state['optimizer']); best=state['best']; history=state['history']; start_epoch=state['epoch']
@@ -76,7 +80,7 @@ def main():
         (out/'progress.json').write_text(json.dumps(history,indent=2),encoding='utf-8')
         print(f"epoch={e+1} train={tr['accuracy']:.4f} val={va['accuracy']:.4f}",flush=True)
     ck=torch.load(out/'best.pt',weights_only=True); net.load_state_dict(ck['net']); te=run(loaders[2],ck['epoch'],False,collect=True)
-    (out/'metrics.json').write_text(json.dumps({'config':vars(a),'test':te,'best_epoch':ck['epoch'],'history':history,'source':'TSSL-BP repository; network and loss unchanged','device':'CPU smoke only' if a.cpu_smoke else torch.cuda.get_device_name(0),'torch':torch.__version__},indent=2),encoding='utf-8')
+    (out/'metrics.json').write_text(json.dumps({'config':vars(a),'parameter_count':sum(p.numel() for p in net.get_parameters() if p.requires_grad),'test':te,'best_epoch':ck['epoch'],'history':history,'source':'TSSL-BP repository; network and loss unchanged except configurable hidden width','device':'CPU smoke only' if a.cpu_smoke else torch.cuda.get_device_name(0),'torch':torch.__version__},indent=2),encoding='utf-8')
     print('TEST',te,flush=True)
 
 if __name__=='__main__': main()
