@@ -47,6 +47,12 @@ SOPCNN 试验采用下述第三方实现的四层卷积、2048 维全连接层�
 
 参数量对照增加两个独立模型：`--architecture m5_small` 将 M5 通道改为 14、30、37、48、69，共 210,376 个可训练参数，对照原 TSSL 的 210,375 个；TSSL 使用 `--hidden-size 1712` 将隐藏层从 300 扩大到 1712，共 1,128,175 个参数，对照 M5 的 1,128,180 个。两者各自沿用原模型训练设置，使用 seed 42 的同一数据划分和公共测试指标。参数量接近不意味着层结构、计算量或训练策略相同。
 
+另外提供结构对齐的连续激活 CNN：`--architecture tssl_cnn`，它与原 TSSL 相同的两层卷积、固定权重求和池化、两层全连接、无偏置和 210,375 个参数；使用相同输入标准化、AdamW、梯度裁剪与权重裁剪。连续 CNN 使用 ReLU 和交叉熵，SNN 使用脉冲神经元与脉冲核损失，二者仍不完全相同。以下命令以 seed 42 独立验证集选模，对照 `tssl_repro_seed42`，没有使用增强与 EMA：
+
+```bash
+uv run --locked python mnist/train_cnn.py --architecture tssl_cnn --epochs 100 --batch-size 50 --lr 0.0005 --seed 42 --tag aligned_seed42
+```
+
 ```bash
 uv run --locked python mnist/train_cnn.py --architecture m5_small --epochs 150 --augment --ema --seed 42 --tag matched_seed42
 uv run --locked python mnist/train_tssl.py --hidden-size 1712 --epochs 100 --seed 42 --tag matched_seed42

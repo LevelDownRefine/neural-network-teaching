@@ -16,12 +16,13 @@ from data_pipeline.mnist import mnist_loaders
 ROOT=Path(__file__).resolve().parent
 from models.m5 import ModelM5
 from models.sopcnn import ModelSOPCNN
+from models.tssl_cnn import TSSLCNN
 from utils.classification_metrics import calculate
 from utils.ema import ParameterEMA
 
 def main():
     parser=argparse.ArgumentParser()
-    parser.add_argument('--architecture',choices=('m5','m5_small','sopcnn'),default='m5')
+    parser.add_argument('--architecture',choices=('m5','m5_small','sopcnn','tssl_cnn'),default='m5')
     parser.add_argument('--device',choices=('auto','cpu','cuda'),default='auto')
     parser.add_argument('--epochs',type=int,default=10)
     parser.add_argument('--batch-size',type=int,default=120)
@@ -37,9 +38,10 @@ def main():
     device=torch.device(('cuda' if torch.cuda.is_available() else 'cpu') if args.device=='auto' else args.device)
     if args.tag and not all(c.isalnum() or c in '-_' for c in args.tag): raise ValueError('invalid tag')
     if (args.augment or args.ema or args.max_batches or args.architecture!='m5') and not args.tag: raise ValueError('use --tag to preserve previous results')
-    loaders=mnist_loaders(args.batch_size,args.seed,augmentation=args.augment)
-    model=(ModelM5() if args.architecture=='m5' else ModelM5((1,14,30,37,48,69)) if args.architecture=='m5_small' else ModelSOPCNN()).to(device); opt=torch.optim.Adam(model.parameters(),lr=args.lr)
-    scheduler=torch.optim.lr_scheduler.ExponentialLR(opt,gamma=.98)
+    loaders=mnist_loaders(args.batch_size,args.seed,normalization=((0.1307,),(0.3081,)) if args.architecture=='tssl_cnn' else None,augmentation=args.augment)
+    model=(ModelM5() if args.architecture=='m5' else ModelM5((1,14,30,37,48,69)) if args.architecture=='m5_small' else TSSLCNN() if args.architecture=='tssl_cnn' else ModelSOPCNN()).to(device)
+    opt=(torch.optim.AdamW if args.architecture=='tssl_cnn' else torch.optim.Adam)(model.parameters(),lr=args.lr)
+    scheduler=torch.optim.lr_scheduler.ExponentialLR(opt,gamma=1.0 if args.architecture=='tssl_cnn' else .98)
     ema=ParameterEMA(model) if args.ema else None
     out=ROOT/'results'/('cnn_'+args.architecture+'_'+args.tag if args.tag else 'cnn_m5_kair'); out.mkdir(parents=True,exist_ok=True)
     def evaluate(loader,collect=False):
@@ -64,7 +66,12 @@ def main():
     for e in range(start_epoch,args.epochs):
         model.train(); n=0; total=0.
         for i,(x,y) in enumerate(loaders[0]):
-            x,y=x.to(device),y.to(device); opt.zero_grad(); loss=torch.nn.functional.nll_loss(model(x),y); loss.backward(); opt.step()
+            x,y=x.to(device),y.to(device); opt.zero_grad(); loss=torch.nn.functional.nll_loss(model(x),y); loss.backward()
+            if args.architecture=='tssl_cnn': torch.nn.utils.clip_grad_norm_(model.parameters(),1)
+            opt.step()
+            if args.architecture=='tssl_cnn':
+                with torch.no_grad():
+                    for p in model.parameters(): p.clamp_(-4,4)
             if ema: ema.update(model)
             n+=len(y); total+=loss.item()*len(y)
             if args.max_batches and i+1>=args.max_batches: break
