@@ -10,6 +10,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from utils.classification_metrics import calculate
+from utils.io import atomic_write_json
 
 root = Path(__file__).resolve().parent.parent
 name = sys.argv[1] if len(sys.argv) > 1 else "logistic"
@@ -41,5 +42,5 @@ out = {
     "score": "softmax probability",
     "count": len(labels),
 }
-(folder / "auc.json").write_text(json.dumps(out, indent=2), encoding="utf-8")
+atomic_write_json(folder / "auc.json", out)
 print(name, json.dumps(out), flush=True)

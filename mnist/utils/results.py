@@ -7,7 +7,7 @@ from pathlib import Path
 def discover(results_dir):
     results_dir = Path(results_dir)
     for folder in sorted(results_dir.iterdir()) if results_dir.exists() else ():
-        if not folder.is_dir() or folder.name == "comparison" or "smoke" in folder.name:
+        if not folder.is_dir() or folder.name == "comparison":
             continue
         path = folder / "metrics.json"
         if not path.exists() and folder.name == "tssl":
@@ -16,7 +16,7 @@ def discover(results_dir):
             continue
         payload = json.loads(path.read_text(encoding="utf-8"))
         config = payload.get("config", {})
-        if config.get("max_batches"):
+        if config.get("max_batches") or (not config and "smoke" in folder.name):
             continue
         metrics = payload.get("test", payload)
         if "confusion_matrix" not in metrics:
@@ -25,6 +25,8 @@ def discover(results_dir):
         auc_path = folder / "auc.json"
         if metrics.get("macro_auc_ovr") is None and auc_path.exists():
             extra = json.loads(auc_path.read_text(encoding="utf-8"))
+            if len(extra["per_class_auc"]) != len(metrics["per_class"]):
+                raise ValueError(f"per-class AUC count mismatch: {folder.name}")
             metrics["macro_auc_ovr"] = extra["macro_auc_ovr"]
             metrics["per_class"] = [
                 dict(row, auc=auc)

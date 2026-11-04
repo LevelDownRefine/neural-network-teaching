@@ -1,6 +1,5 @@
 """Evaluate the selected TSSL checkpoint on all official test images."""
 
-import json
 import sys
 from pathlib import Path
 import numpy as np
@@ -9,6 +8,7 @@ import yaml
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from classification_metrics import calculate
+from utils.io import atomic_write_json
 
 root = Path(__file__).resolve().parent.parent
 src = root / "models" / "tssl"
@@ -44,9 +44,7 @@ with torch.no_grad():
         ys.append(y.numpy())
 metrics = calculate(np.concatenate(ys), np.concatenate(scores))
 metrics["selected_epoch"] = ck["epoch"]
-(root / "results" / "tssl" / "classification.json").write_text(
-    json.dumps(metrics, indent=2), encoding="utf-8"
-)
+atomic_write_json(root / "results" / "tssl" / "classification.json", metrics)
 print(
     "TSSL test accuracy",
     metrics["accuracy"],

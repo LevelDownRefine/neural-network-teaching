@@ -52,6 +52,8 @@ uv run --locked python mnist/evaluate.py checkpoint --model tssl_cnn --weights m
 
 `--model` 可选 `logistic`、`m5`、`tssl_cnn`、`tssl`。单独评估不重新选模；数据划分和选模方式以原实验记录为准。历史记录中无法确定的字段标为未知，smoke 结果不进入汇总。
 
+`utils/` 是内部模块，评估请通过 `mnist/evaluate.py` 调用。
+
 ## 参考
 
 - M5 CNN：[论文](https://arxiv.org/abs/2008.10400)、[作者代码](https://github.com/ansh941/MnistSimpleCNN)。

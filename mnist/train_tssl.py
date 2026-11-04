@@ -15,8 +15,10 @@ import yaml
 from torchvision import datasets, transforms
 from data_pipeline.mnist import mnist_loaders
 from utils.checkpoints import prepare_output, save_training, restore_best, cpu_snapshot
+from utils.cli import positive_int
 from utils.experiment import run_epochs
 from utils.evaluation import evaluate_batches
+from utils.io import atomic_write_json
 from torch.utils.data import DataLoader
 import cnns
 import global_v as glv
@@ -25,7 +27,7 @@ import functions.loss_f as loss_f
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--epochs", type=int, default=100)
+    p.add_argument("--epochs", type=positive_int, default=100)
     p.add_argument("--batch-size", type=int, default=50)
     p.add_argument("--seed", type=int, default=3)
     p.add_argument("--hidden-size", type=int, default=300)
@@ -208,34 +210,31 @@ def main():
     ck = torch.load(out / "best.pt", weights_only=True)
     net.load_state_dict(ck["net"])
     te = run(loaders[2], ck["epoch"], False, collect=True)
-    (out / "metrics.json").write_text(
-        json.dumps(
-            {
-                "model": "tssl",
-                "split": {
-                    "train": 60000 if a.official_protocol else 50000,
-                    "validation": 0 if a.official_protocol else 10000,
-                    "test": 10000,
-                },
-                "config": vars(a),
-                "parameter_count": sum(
-                    p.numel() for p in net.get_parameters() if p.requires_grad
-                ),
-                "selection": "official test accuracy (test set used for selection)"
-                if a.official_protocol
-                else "validation accuracy",
-                "test": te,
-                "best_epoch": ck["epoch"],
-                "history": history,
-                "source": "TSSL-BP repository; network and loss unchanged except configurable hidden width",
-                "device": "CPU smoke only"
-                if a.cpu_smoke
-                else torch.cuda.get_device_name(0),
-                "torch": torch.__version__,
+    atomic_write_json(
+        out / "metrics.json",
+        {
+            "model": "tssl",
+            "split": {
+                "train": 60000 if a.official_protocol else 50000,
+                "validation": 0 if a.official_protocol else 10000,
+                "test": 10000,
             },
-            indent=2,
-        ),
-        encoding="utf-8",
+            "config": vars(a),
+            "parameter_count": sum(
+                p.numel() for p in net.get_parameters() if p.requires_grad
+            ),
+            "selection": "official test accuracy (test set used for selection)"
+            if a.official_protocol
+            else "validation accuracy",
+            "test": te,
+            "best_epoch": ck["epoch"],
+            "history": history,
+            "source": "TSSL-BP repository; network and loss unchanged except configurable hidden width",
+            "device": "CPU smoke only"
+            if a.cpu_smoke
+            else torch.cuda.get_device_name(0),
+            "torch": torch.__version__,
+        },
     )
     print("TEST", te, flush=True)
 

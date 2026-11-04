@@ -12,6 +12,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from utils.evaluation import evaluate_batches
+from utils.io import atomic_write_json
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -92,7 +93,7 @@ def main():
         "test": evaluate_batches(loader, predict),
     }
     if args.output:
-        args.output.write_text(json.dumps(result, indent=2), encoding="utf-8")
+        atomic_write_json(args.output, result)
     print(
         json.dumps(
             {

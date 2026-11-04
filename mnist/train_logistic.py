@@ -14,15 +14,17 @@ import torch
 from data_pipeline.mnist import mnist_loaders
 from torch import nn
 from utils.checkpoints import prepare_output
+from utils.cli import positive_int
 from utils.evaluation import evaluate_batches
 from utils.experiment import run_epochs
+from utils.io import atomic_write_json
 
 ROOT = Path(__file__).resolve().parent
 
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--epochs", type=int, default=20)
+    p.add_argument("--epochs", type=positive_int, default=20)
     p.add_argument("--batch-size", type=int, default=512)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--lr", type=float, default=0.001)
@@ -152,7 +154,7 @@ def main():
         "torch": torch.__version__,
         "device": str(device),
     }
-    (out / "metrics.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
+    atomic_write_json(out / "metrics.json", result)
     print(
         "TEST",
         json.dumps(

@@ -22,6 +22,10 @@ def test_selection_and_checkpoint_run_with_validation_context():
         assert not state["active"]
         state["saved"].append((best, checkpoint["epoch"]))
 
+    def validate(epoch):
+        assert state["active"]
+        return {"accuracy": [0.5, 0.8, 0.7][epoch]}
+
     best, history, checkpoint = run_epochs(
         0,
         3,
@@ -29,7 +33,7 @@ def test_selection_and_checkpoint_run_with_validation_context():
         [],
         None,
         train_epoch=lambda e: e,
-        validate=lambda e: {"accuracy": [0.5, 0.8, 0.7][e]},
+        validate=validate,
         capture=capture,
         record=lambda e, tr, val: {"epoch": e + 1, "score": val["accuracy"]},
         save_epoch=save,

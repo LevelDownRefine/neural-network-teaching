@@ -13,9 +13,11 @@ from data_pipeline.mnist import mnist_loaders
 from models.m5 import ModelM5
 from models.tssl_cnn import TSSLCNN
 from utils.checkpoints import cpu_snapshot, prepare_output, restore_best, save_training
+from utils.cli import positive_int
 from utils.ema import ParameterEMA
 from utils.evaluation import evaluate_batches
 from utils.experiment import run_epochs
+from utils.io import atomic_write_json
 
 ROOT = Path(__file__).resolve().parent
 
@@ -41,7 +43,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--architecture", choices=tuple(CNN_CONFIGS), default="m5")
     parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
-    parser.add_argument("--epochs", type=int, default=10)
+    parser.add_argument("--epochs", type=positive_int, default=10)
     parser.add_argument("--batch-size", type=int, default=120)
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--seed", type=int, default=42)
@@ -224,7 +226,7 @@ def main():
         "device": str(device),
         "note": "Independent implementation and common-split adaptation; not an exact paper reproduction.",
     }
-    (out / "metrics.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
+    atomic_write_json(out / "metrics.json", result)
     print(
         "TEST",
         json.dumps(
