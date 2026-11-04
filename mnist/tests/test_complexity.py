@@ -2,9 +2,13 @@ import json
 import sys
 from copy import deepcopy
 
+import pytest
 import yaml
+from models.m5 import ModelM5
+from models.tssl_cnn import TSSLCNN
+from torch import nn
 from utils import complexity
-from utils.complexity import ROOT, all_counts, count_tssl
+from utils.complexity import ROOT, all_counts, count_dense_layers, count_tssl
 
 
 def test_counts_for_current_mnist_models():
@@ -48,3 +52,29 @@ def test_command_reports_floating_point_operations(monkeypatch, capsys):
         sum(layer["flops_approx_per_input"] for layer in result["layers"]) == 13710000
     )
     assert "macs" not in result
+
+
+@pytest.mark.parametrize("size", [24, 28, 32])
+def test_spatial_formulas_match_resized_architectures(size):
+    a = (size - 4) // 2 - 4
+    b = a // 2
+    formula_cnn = 750 * (size - 4) ** 2 + 30000 * a**2 + 24000 * b**2 + 6000
+    formula_m5 = (
+        1600 * (size - 4) ** 2
+        + 102400 * (size - 8) ** 2
+        + 307200 * (size - 12) ** 2
+        + 614400 * (size - 16) ** 2
+        + 1027200 * (size - 20) ** 2
+    )
+    logistic = nn.Sequential(nn.Flatten(), nn.Linear(size * size, 10))
+    m5 = ModelM5()
+    m5.fc1 = nn.Linear(160 * (size - 20) ** 2, 10, bias=False)
+    cnn = TSSLCNN()
+    cnn.fc1 = nn.Linear(40 * b * b, 300, bias=False)
+    path = ROOT / "models" / "tssl" / "Networks" / "MNIST_CNN.yaml"
+    config = yaml.safe_load(path.read_text(encoding="utf-8"))
+    config["Layers"]["FC_1"]["n_inputs"] = 40 * b * b
+    assert 2 * count_dense_layers(logistic, size)["macs"] == 20 * size**2
+    assert 2 * count_dense_layers(m5, size)["macs"] == formula_m5
+    assert 2 * count_dense_layers(cnn, size)["macs"] == formula_cnn
+    assert 2 * count_tssl(config, size)["macs"] == 5 * formula_cnn

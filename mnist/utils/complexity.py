@@ -14,7 +14,7 @@ from torch import nn
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def count_dense_layers(model):
+def count_dense_layers(model, input_size=28):
     """Count dense MACs using the shapes from a CPU forward pass."""
     layers = []
     handles = []
@@ -32,7 +32,7 @@ def count_dense_layers(model):
     try:
         model.eval()
         with torch.no_grad():
-            model(torch.zeros(1, 1, 28, 28))
+            model(torch.zeros(1, 1, input_size, input_size))
     finally:
         for handle in handles:
             handle.remove()
@@ -44,10 +44,10 @@ def count_dense_layers(model):
     }
 
 
-def count_tssl(config):
+def count_tssl(config, input_size=28):
     """Count dense weights in the TSSL YAML, including all time steps."""
     steps = config["Network"]["n_steps"]
-    channels, height, width = 1, 28, 28
+    channels, height, width = 1, input_size, input_size
     parameters = 0
     layers = []
     for name, layer in config["Layers"].items():
