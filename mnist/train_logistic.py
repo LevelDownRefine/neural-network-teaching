@@ -15,6 +15,7 @@ from torch.utils.data import DataLoader, random_split
 from torchvision import datasets, transforms
 from data_pipeline.mnist import mnist_loaders
 from utils.classification_metrics import calculate
+from utils.checkpoints import prepare_output
 
 ROOT = Path(__file__).resolve().parent
 
@@ -25,8 +26,6 @@ def main():
     p.add_argument('--seed', type=int, default=42)
     p.add_argument('--lr', type=float, default=0.001)
     p.add_argument('--device', choices=['auto', 'cpu', 'cuda'], default='auto')
-    p.add_argument('--model', choices=['logistic', 'mlp'], default='logistic')
-    p.add_argument('--hidden', type=int, default=128)
     p.add_argument('--tag', default='', help='optional separate results suffix')
     a = p.parse_args()
     random.seed(a.seed); np.random.seed(a.seed); torch.manual_seed(a.seed)
@@ -37,12 +36,12 @@ def main():
         if not target.exists():
             with gzip.open(gz, 'rb') as src, target.open('wb') as dst: shutil.copyfileobj(src, dst)
     loaders = mnist_loaders(a.batch_size,a.seed)
-    model = (nn.Sequential(nn.Flatten(), nn.Linear(784, 10)) if a.model == 'logistic' else nn.Sequential(nn.Flatten(), nn.Linear(784, a.hidden), nn.ReLU(), nn.Linear(a.hidden, 10))).to(device)
+    model = nn.Sequential(nn.Flatten(), nn.Linear(784, 10)).to(device)
     opt = torch.optim.Adam(model.parameters(), lr=a.lr)
     loss_fn = nn.CrossEntropyLoss()
     if a.tag and not all(c.isalnum() or c in '-_' for c in a.tag): raise ValueError('invalid tag')
-    out = ROOT / 'results' / (a.model + ('_' + a.tag if a.tag else ''))
-    out.mkdir(parents=True, exist_ok=True)
+    out = ROOT / 'results' / ('logistic' + ('_' + a.tag if a.tag else ''))
+    prepare_output(out,False,allow_resume=False)
     def evaluate(loader, collect=False):
         model.eval(); total = correct = 0; loss = 0.; labels=[]; all_scores=[]
         with torch.no_grad():
@@ -66,7 +65,7 @@ def main():
         print(f"epoch={epoch+1} train_loss={loss/total:.4f} val_acc={val['accuracy']:.4f}",flush=True)
     ckpt=torch.load(out/'best.pt',map_location=device,weights_only=True); model.load_state_dict(ckpt['model'])
     metrics=evaluate(loaders[2],collect=True)
-    result={'experiment':'multinomial logistic regression' if a.model=='logistic' else 'ReLU MLP baseline', 'config':vars(a), 'best_epoch':ckpt['epoch'],'validation_best_accuracy':best, 'test':metrics,'history':history,'runtime_seconds':time.time()-start,'python':platform.python_version(),'torch':torch.__version__,'device':str(device)}
+    result={'experiment':'multinomial logistic regression', 'config':vars(a), 'best_epoch':ckpt['epoch'],'validation_best_accuracy':best, 'test':metrics,'history':history,'runtime_seconds':time.time()-start,'python':platform.python_version(),'torch':torch.__version__,'device':str(device)}
     (out/'metrics.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
     print('TEST',json.dumps({'accuracy':metrics['accuracy'],'count':metrics['count'],'best_epoch':ckpt['epoch']}),flush=True)
 

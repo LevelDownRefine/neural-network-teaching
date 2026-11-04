@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 ROOT=Path(__file__).resolve().parent.parent
-for model in ('logistic','mlp','logistic_kair','mlp_kair','cnn_m5_kair'):
+for model in ('logistic','logistic_kair','cnn_m5_kair','cnn_m5_repro_seed42','cnn_tssl_cnn_aligned_seed42','tssl_repro_seed42'):
     path=ROOT/'results'/model/'metrics.json'
     if not path.exists(): continue
     m=json.loads(path.read_text(encoding='utf-8'))

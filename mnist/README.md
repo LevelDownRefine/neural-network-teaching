@@ -35,7 +35,7 @@ TSSL 需要 CUDA。大 TSSL 使用 `train_tssl.py --hidden-size 1712 --epochs 10
 
 TSSL 官方协议可用 `train_tssl.py --official-protocol --epochs 100 --seed 3 --tag official_seed3` 运行。该模式逐轮按测试集准确率选模型；适配版显式固定 PyTorch CPU 随机种子并使用零数据加载工作进程，官方脚本只显式设置 CUDA 和 NumPy 种子、使用四个工作进程。官方仓库当前配置文件为 200 轮，这里使用论文报告的 100 轮。核对源码版本为 `ffaac71d3344172980f048d98b123e40c5420401`。
 
-`evaluate.py report` 汇总仓库中的旧结果，`evaluate.py plot` 绘图，`evaluate.py auc logistic_kair` 计算逻辑回归 AUC。`data_pipeline/` 管理划分和训练增强，`utils/classification_metrics.py` 提供公共指标。
+`evaluate.py report` 汇总本机存在的旧结果和当前实验，并列出缺失实验；`evaluate.py plot` 绘图，`evaluate.py auc logistic_kair` 计算逻辑回归 AUC。`data_pipeline/` 管理划分和训练增强，`utils/classification_metrics.py` 提供公共指标。
 
 ## 来源
 

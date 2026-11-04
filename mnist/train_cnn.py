@@ -18,6 +18,7 @@ from models.m5 import ModelM5
 from models.tssl_cnn import TSSLCNN
 from utils.classification_metrics import calculate
 from utils.ema import ParameterEMA
+from utils.checkpoints import prepare_output, save_training, restore_best, cpu_snapshot
 
 def main():
     parser=argparse.ArgumentParser()
@@ -42,7 +43,7 @@ def main():
     opt=(torch.optim.AdamW if args.architecture=='tssl_cnn' else torch.optim.Adam)(model.parameters(),lr=args.lr)
     scheduler=torch.optim.lr_scheduler.ExponentialLR(opt,gamma=1.0 if args.architecture=='tssl_cnn' else .98)
     ema=ParameterEMA(model) if args.ema else None
-    out=ROOT/'results'/('cnn_'+args.architecture+'_'+args.tag if args.tag else 'cnn_m5_kair'); out.mkdir(parents=True,exist_ok=True)
+    out=ROOT/'results'/('cnn_'+args.architecture+'_'+args.tag if args.tag else 'cnn_m5_kair'); prepare_output(out,args.resume)
     def evaluate(loader,collect=False):
         model.eval(); n=correct=0; ys=[]; scores=[]
         with torch.no_grad():
@@ -51,7 +52,7 @@ def main():
                 if collect: ys.extend(y.cpu().tolist()); scores.extend(v.cpu().tolist())
                 if args.max_batches and i+1>=args.max_batches: break
         return calculate(ys,scores) if collect else {'accuracy':correct/n,'count':n}
-    best=-1.; history=[]; start=time.time(); start_epoch=0
+    best=-1.; history=[]; start=time.time(); start_epoch=0; best_checkpoint=None
     if args.resume:
         state=torch.load(out/'latest.pt',map_location='cpu',weights_only=False)
         if state['config'].get('architecture','m5')!=args.architecture: raise ValueError('resume architecture differs')
@@ -62,6 +63,7 @@ def main():
         random.setstate(state['python_rng']); np.random.set_state(state['numpy_rng']); torch.set_rng_state(state['torch_rng']);
         if device.type=='cuda': torch.cuda.set_rng_state_all(state['cuda_rng'])
         best=state['best']; history=state['history']; start_epoch=state['epoch']
+        best_checkpoint=restore_best(state,out)
     for e in range(start_epoch,args.epochs):
         model.train(); n=0; total=0.
         for i,(x,y) in enumerate(loaders[0]):
@@ -77,12 +79,12 @@ def main():
         with ema.apply(model) if ema else nullcontext():
             validation=evaluate(loaders[1]); history.append({'epoch':e+1,'train_loss':total/n,'validation_accuracy':validation['accuracy']})
             if validation['accuracy']>best:
-                best=validation['accuracy']; torch.save({'model':model.state_dict(),'epoch':e+1,'args':vars(args)},out/'best.pt')
+                best=validation['accuracy']; best_checkpoint={'model':cpu_snapshot(model.state_dict()),'epoch':e+1,'args':vars(args)}
         (out/'progress.json').write_text(json.dumps(history,indent=2),encoding='utf-8')
         print(f"epoch={e+1} train_loss={total/n:.4f} val_acc={validation['accuracy']:.4f}",flush=True)
         scheduler.step()
-        state={'model':model.state_dict(),'optimizer':opt.state_dict(),'scheduler':scheduler.state_dict(),'epoch':e+1,'best':best,'history':history,'config':vars(args),'python_rng':random.getstate(),'numpy_rng':np.random.get_state(),'torch_rng':torch.get_rng_state(),'cuda_rng':torch.cuda.get_rng_state_all() if device.type=='cuda' else [],'ema_shadow':ema.shadow if ema else None,'ema_updates':ema.updates if ema else 0}
-        temp=out/'latest.tmp'; torch.save(state,temp); temp.replace(out/'latest.pt')
+        state={'model':model.state_dict(),'optimizer':opt.state_dict(),'scheduler':scheduler.state_dict(),'epoch':e+1,'best':best,'best_checkpoint':best_checkpoint,'history':history,'config':vars(args),'python_rng':random.getstate(),'numpy_rng':np.random.get_state(),'torch_rng':torch.get_rng_state(),'cuda_rng':torch.cuda.get_rng_state_all() if device.type=='cuda' else [],'ema_shadow':ema.shadow if ema else None,'ema_updates':ema.updates if ema else 0}
+        save_training(state,out)
     ck=torch.load(out/'best.pt',map_location=device,weights_only=True); model.load_state_dict(ck['model'])
     metrics=evaluate(loaders[2],collect=True)
     result={'model':args.architecture,'parameter_count':sum(p.numel() for p in model.parameters() if p.requires_grad),'config':vars(args),'data_augmentation':args.augment,'ema':args.ema,'selection':'validation accuracy','best_epoch':ck['epoch'],'validation_best_accuracy':best,'test':metrics,'history':history,'runtime_seconds':time.time()-start,'torch':torch.__version__,'device':str(device),'note':'Independent implementation and common-split adaptation; not an exact paper reproduction.'}
