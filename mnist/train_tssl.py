@@ -13,9 +13,10 @@ import torch
 import yaml
 from torchvision import datasets, transforms
 from data_pipeline.mnist import mnist_loaders
-from utils.classification_metrics import calculate
 from utils.checkpoints import prepare_output, save_training, restore_best, cpu_snapshot
-from torch.utils.data import DataLoader, random_split
+from utils.experiment import run_epochs
+from utils.evaluation import evaluate_batches
+from torch.utils.data import DataLoader
 import cnns
 import global_v as glv
 import functions.loss_f as loss_f
@@ -60,7 +61,13 @@ def main():
     if a.official_protocol and not a.tag: raise ValueError('use --tag for official protocol')
     out=ROOT/'results'/(('tssl_smoke' if a.max_batches else 'tssl')+('_'+a.tag if a.tag else '')); prepare_output(out,a.resume)
     def run(loader, epoch, training, collect=False):
-        net.train() if training else net.eval(); n=correct=0; losses=0.; ys=[]; all_scores=[]
+        if collect:
+            net.eval()
+            def predict(x):
+                x=x.cuda().unsqueeze(-1).repeat(1,1,1,1,steps)
+                return net.forward(x,epoch,False).sum(dim=4).squeeze(-1).squeeze(-1)
+            return evaluate_batches(loader,predict,a.max_batches)
+        net.train() if training else net.eval(); n=correct=0; losses=0.
         for idx,(x,y) in enumerate(loader):
             x=x.cuda().unsqueeze(-1).repeat(1,1,1,1,steps); y=y.cuda()
             with torch.set_grad_enabled(training):
@@ -69,9 +76,8 @@ def main():
                     target=torch.zeros((len(y),10,1,1,steps),device=device); target[torch.arange(len(y),device=device),y]=desired
                     loss=err.spike_kernel(pred,target,nc); opt.zero_grad(); loss.backward(); torch.nn.utils.clip_grad_norm_(net.get_parameters(),1); opt.step(); net.weight_clipper(); losses+=loss.item()
             scores=pred.sum(dim=4).squeeze(-1).squeeze(-1); correct+=(scores.argmax(1)==y).sum().item(); n+=len(y)
-            if collect: ys.extend(y.cpu().tolist()); all_scores.extend(scores.cpu().tolist())
             if a.max_batches and idx+1>=a.max_batches: break
-        return calculate(ys,all_scores) if collect else {'accuracy':correct/n,'count':n,'loss':losses/n if training else None}
+        return {'accuracy':correct/n,'count':n,'loss':losses/n if training else None}
     best=-1; history=[]; start_epoch=0; best_checkpoint=None
     if a.resume:
         state=torch.load(out/'latest.pt',map_location='cpu',weights_only=False)
@@ -83,16 +89,19 @@ def main():
         random.setstate(state['python_rng']); np.random.set_state(state['numpy_rng']); torch.set_rng_state(state['torch_rng'])
         if not a.cpu_smoke: torch.cuda.set_rng_state_all(state['cuda_rng'])
         best_checkpoint=restore_best(state,out)
-    for e in range(start_epoch,a.epochs):
-        tr=run(loaders[0],e,True); va=run(loaders[1],e,False); history.append({'epoch':e+1,'train':tr,('test_selection' if a.official_protocol else 'validation'):va})
-        if va['accuracy']>best or (a.official_protocol and va['accuracy']==best):
-            best=va['accuracy']; best_checkpoint={'net':cpu_snapshot(net.state_dict()),'epoch':e+1}
+    def save_epoch(e,best,history,best_checkpoint):
         state={'net':net.state_dict(),'optimizer':opt.state_dict(),'epoch':e+1,'best':best,'best_checkpoint':best_checkpoint,'history':history,'config':vars(a),'python_rng':random.getstate(),'numpy_rng':np.random.get_state(),'torch_rng':torch.get_rng_state(),'cuda_rng':torch.cuda.get_rng_state_all() if not a.cpu_smoke else []}
         save_training(state,out)
         (out/'progress.json').write_text(json.dumps(history,indent=2),encoding='utf-8')
-        print(f"epoch={e+1} train={tr['accuracy']:.4f} {'test_selection' if a.official_protocol else 'val'}={va['accuracy']:.4f}",flush=True)
+        valkey='test_selection' if a.official_protocol else 'validation'
+        print(f"epoch={e+1} train={history[-1]['train']['accuracy']:.4f} {'test_selection' if a.official_protocol else 'val'}={history[-1][valkey]['accuracy']:.4f}",flush=True)
+    best,history,best_checkpoint=run_epochs(start_epoch,a.epochs,best,history,best_checkpoint,
+        train_epoch=lambda e:run(loaders[0],e,True),validate=lambda e:run(loaders[1],e,False),
+        capture=lambda e:{'net':cpu_snapshot(net.state_dict()),'epoch':e+1},
+        record=lambda e,tr,va:{'epoch':e+1,'train':tr,('test_selection' if a.official_protocol else 'validation'):va},
+        save_epoch=save_epoch,replace_on_tie=a.official_protocol)
     ck=torch.load(out/'best.pt',weights_only=True); net.load_state_dict(ck['net']); te=run(loaders[2],ck['epoch'],False,collect=True)
-    (out/'metrics.json').write_text(json.dumps({'config':vars(a),'parameter_count':sum(p.numel() for p in net.get_parameters() if p.requires_grad),'selection':'official test accuracy (test set used for selection)' if a.official_protocol else 'validation accuracy','test':te,'best_epoch':ck['epoch'],'history':history,'source':'TSSL-BP repository; network and loss unchanged except configurable hidden width','device':'CPU smoke only' if a.cpu_smoke else torch.cuda.get_device_name(0),'torch':torch.__version__},indent=2),encoding='utf-8')
+    (out/'metrics.json').write_text(json.dumps({'model':'tssl','split':{'train':60000 if a.official_protocol else 50000,'validation':0 if a.official_protocol else 10000,'test':10000},'config':vars(a),'parameter_count':sum(p.numel() for p in net.get_parameters() if p.requires_grad),'selection':'official test accuracy (test set used for selection)' if a.official_protocol else 'validation accuracy','test':te,'best_epoch':ck['epoch'],'history':history,'source':'TSSL-BP repository; network and loss unchanged except configurable hidden width','device':'CPU smoke only' if a.cpu_smoke else torch.cuda.get_device_name(0),'torch':torch.__version__},indent=2),encoding='utf-8')
     print('TEST',te,flush=True)
 
 if __name__=='__main__': main()

@@ -8,8 +8,12 @@ ROOT=Path(__file__).resolve().parent
 TOOLS=ROOT/'utils'
 
 def main():
+    if len(sys.argv)>1 and sys.argv[1]=='checkpoint':
+        sys.argv=[str(TOOLS/'evaluate_checkpoint.py'),*sys.argv[2:]]
+        runpy.run_path(sys.argv[0],run_name='__main__')
+        return
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action',choices=['report','plot','auc','tssl'])
+    parser.add_argument('action',choices=['report','plot','auc','tssl','checkpoint'])
     parser.add_argument('model',nargs='?',help='result directory for auc (e.g. logistic_kair)')
     args=parser.parse_args()
     scripts={'report':'build_comparison.py','plot':'plot_results.py','auc':'evaluate_auc.py','tssl':'evaluate_tssl.py'}

@@ -35,7 +35,13 @@ TSSL 需要 CUDA。大 TSSL 使用 `train_tssl.py --hidden-size 1712 --epochs 10
 
 TSSL 官方协议可用 `train_tssl.py --official-protocol --epochs 100 --seed 3 --tag official_seed3` 运行。该模式逐轮按测试集准确率选模型；适配版显式固定 PyTorch CPU 随机种子并使用零数据加载工作进程，官方脚本只显式设置 CUDA 和 NumPy 种子、使用四个工作进程。官方仓库当前配置文件为 200 轮，这里使用论文报告的 100 轮。核对源码版本为 `ffaac71d3344172980f048d98b123e40c5420401`。
 
-`evaluate.py report` 汇总本机存在的旧结果和当前实验，并列出缺失实验；`evaluate.py plot` 绘图，`evaluate.py auc logistic_kair` 计算逻辑回归 AUC。`data_pipeline/` 管理划分和训练增强，`utils/classification_metrics.py` 提供公共指标。
+`evaluate.py report` 自动发现本机已完成的实验，保留 seed 和选模方式；`evaluate.py plot` 使用同一结果读取逻辑绘制混淆矩阵。原有 `evaluate.py auc logistic_kair` 和 `evaluate.py tssl` 入口保留。指定现有权重可单独评估四项指标：
+
+```bash
+uv run --locked python mnist/evaluate.py checkpoint --model tssl_cnn --weights mnist/results/cnn_tssl_cnn_aligned_seed42/best.pt --output evaluation.json
+```
+
+模型类型可选 `logistic`、`m5`、`tssl_cnn`、`tssl`；TSSL 需要 CUDA。单独评估不会重新训练或选择模型，应自行查看原实验记录中的数据划分及选模方式。新结果记录模型、数据集规模、seed 和选模方式；历史记录无法推断的字段显示为空或未知。小批次 smoke 结果不进入汇总。`data_pipeline/` 管理划分及训练增强，`utils/experiment.py` 统一训练轮次与选模，`utils/classification_metrics.py` 提供公共指标。
 
 ## 来源
 

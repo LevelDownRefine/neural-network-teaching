@@ -1,7 +1,10 @@
 import numpy as np
 import pytest
+import torch
+from torch.utils.data import DataLoader, TensorDataset
 
 from utils.classification_metrics import calculate
+from utils.evaluation import evaluate_batches
 
 
 def test_confusion_and_per_class_scores():
@@ -25,3 +28,11 @@ def test_auc_ties_and_perfect_multiclass_separation():
     tied = calculate(labels, np.zeros((20, 10)))
     assert tied['macro_auc_ovr'] == .5
     assert sum(row['support'] for row in tied['per_class']) == 20
+
+
+def test_checkpoint_and_training_use_same_score_evaluation():
+    labels=torch.arange(10)
+    scores=torch.eye(10)
+    loader=DataLoader(TensorDataset(scores,labels),batch_size=3)
+    expected=calculate(labels.numpy(),scores.numpy())
+    assert evaluate_batches(loader,lambda images:images)==expected
