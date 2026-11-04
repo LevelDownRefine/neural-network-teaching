@@ -1,4 +1,5 @@
 """Continuous CNN with the same layer sizes and pooling weights as TSSL-BP."""
+
 import torch.nn as nn
 import torch.nn.functional as F
 

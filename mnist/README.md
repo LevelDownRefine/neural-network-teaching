@@ -30,6 +30,8 @@ uv run --locked python mnist/train_logistic.py --epochs 20
 uv run --locked python mnist/train_cnn.py --epochs 150 --augment --ema --tag repro_seed42
 uv run --locked python mnist/train_cnn.py --architecture tssl_cnn --epochs 100 --batch-size 50 --lr 0.0005 --seed 42 --tag aligned_seed42
 uv run --locked python mnist/train_tssl.py --epochs 100 --seed 42 --tag repro_seed42
+uv run --locked ruff check .
+uv run --locked ruff format --check .
 uv run --locked pytest -q
 ```
 
