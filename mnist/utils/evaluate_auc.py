@@ -12,7 +12,8 @@ root=Path(__file__).resolve().parent.parent
 name=sys.argv[1] if len(sys.argv)>1 else 'logistic'
 folder=root/'results'/name
 ck=torch.load(folder/'best.pt',map_location='cpu',weights_only=True)
-model=nn.Sequential(nn.Flatten(),nn.Linear(784,10)) if ck['args'].get('model','logistic')=='logistic' else nn.Sequential(nn.Flatten(),nn.Linear(784,ck['args']['hidden']),nn.ReLU(),nn.Linear(ck['args']['hidden'],10))
+if ck['args'].get('model','logistic') != 'logistic': raise ValueError('only logistic regression checkpoints are supported')
+model=nn.Sequential(nn.Flatten(),nn.Linear(784,10))
 model.load_state_dict(ck['model']); model.eval()
 loader=DataLoader(datasets.MNIST(root/'data',train=False,download=False,transform=transforms.ToTensor()),batch_size=512)
 scores=[]; labels=[]

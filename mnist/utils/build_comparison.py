@@ -6,9 +6,13 @@ import numpy as np
 
 ROOT=Path(__file__).resolve().parent.parent
 OUT=ROOT/'results'/'comparison'
-SOURCES=[('logistic','logistic_kair/metrics.json','test','logistic_kair/auc.json'),
-         ('cnn_m5','cnn_m5_kair/metrics.json','test',None),
-         ('tssl','tssl/classification.json',None,None)]
+SOURCES=[('logistic','logistic/metrics.json','test',None),
+         ('logistic_legacy','logistic_kair/metrics.json','test','logistic_kair/auc.json'),
+         ('cnn_m5_legacy','cnn_m5_kair/metrics.json','test',None),
+         ('cnn_m5_repro','cnn_m5_repro_seed42/metrics.json','test',None),
+         ('cnn_tssl_aligned','cnn_tssl_cnn_aligned_seed42/metrics.json','test',None),
+         ('tssl_legacy','tssl/classification.json',None,None),
+         ('tssl_repro','tssl_repro_seed42/metrics.json','test',None)]
 
 def main():
     OUT.mkdir(parents=True,exist_ok=True)
@@ -23,8 +27,10 @@ def main():
         if abs(accuracy-metrics['accuracy'])>1e-12: raise ValueError(f'accuracy mismatch: {model}')
         auc=metrics.get('macro_auc_ovr'); per_auc=None
         if auc_file:
-            auc_data=json.loads((ROOT/'results'/auc_file).read_text(encoding='utf-8'))
-            auc=auc_data['macro_auc_ovr']; per_auc=auc_data['per_class_auc']
+            auc_path=ROOT/'results'/auc_file
+            if auc_path.exists():
+                auc_data=json.loads(auc_path.read_text(encoding='utf-8'))
+                auc=auc_data['macro_auc_ovr']; per_auc=auc_data['per_class_auc']
         rows=metrics['per_class']
         for i,row in enumerate(rows):
             classes.append({'model':model,'digit':row['digit'],'precision':row['precision'],'recall':row['recall'],'f1':row['f1'],'support':row['support'],'auc':per_auc[i] if per_auc is not None else row.get('auc')})
@@ -36,7 +42,7 @@ def main():
         if rows:
             with (OUT/f'{name}.csv').open('w',encoding='utf-8-sig',newline='') as f:
                 writer=csv.DictWriter(f,fieldnames=rows[0].keys()); writer.writeheader(); writer.writerows(rows)
-    (OUT/'manifest.json').write_text(json.dumps({'available':summary,'missing':missing,'note':'TSSL split seed 3; other models seed 42. AUC uses softmax scores; SNN score semantics differ.'},indent=2),encoding='utf-8')
+    (OUT/'manifest.json').write_text(json.dumps({'available':summary,'missing':missing,'note':'Legacy TSSL used seed 3; new TSSL and aligned CNN use seed 42. Protocols and score semantics differ; see each experiment config.'},indent=2),encoding='utf-8')
     print('available:', ', '.join(row['model'] for row in summary), '; pending:', ', '.join(missing))
 
 if __name__=='__main__': main()
