@@ -8,8 +8,9 @@ from torch.nn import functional as F
 
 
 class ModelM5(nn.Module):
-    def __init__(self, channels=(1, 32, 64, 96, 128, 160)):
+    def __init__(self):
         super().__init__()
+        channels = (1, 32, 64, 96, 128, 160)
         for index, (input_channels, output_channels) in enumerate(zip(channels, channels[1:]), start=1):
             setattr(self, f'conv{index}', nn.Conv2d(input_channels, output_channels, 5, bias=False))
             setattr(self, f'conv{index}_bn', nn.BatchNorm2d(output_channels))

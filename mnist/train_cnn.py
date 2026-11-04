@@ -21,7 +21,7 @@ from utils.ema import ParameterEMA
 
 def main():
     parser=argparse.ArgumentParser()
-    parser.add_argument('--architecture',choices=('m5','m5_small','tssl_cnn'),default='m5')
+    parser.add_argument('--architecture',choices=('m5','tssl_cnn'),default='m5')
     parser.add_argument('--device',choices=('auto','cpu','cuda'),default='auto')
     parser.add_argument('--epochs',type=int,default=10)
     parser.add_argument('--batch-size',type=int,default=120)
@@ -38,7 +38,7 @@ def main():
     if args.tag and not all(c.isalnum() or c in '-_' for c in args.tag): raise ValueError('invalid tag')
     if (args.augment or args.ema or args.max_batches or args.architecture!='m5') and not args.tag: raise ValueError('use --tag to preserve previous results')
     loaders=mnist_loaders(args.batch_size,args.seed,normalization=((0.1307,),(0.3081,)) if args.architecture=='tssl_cnn' else None,augmentation=args.augment)
-    model=(ModelM5() if args.architecture=='m5' else ModelM5((1,14,30,37,48,69)) if args.architecture=='m5_small' else TSSLCNN()).to(device)
+    model=(ModelM5() if args.architecture=='m5' else TSSLCNN()).to(device)
     opt=(torch.optim.AdamW if args.architecture=='tssl_cnn' else torch.optim.Adam)(model.parameters(),lr=args.lr)
     scheduler=torch.optim.lr_scheduler.ExponentialLR(opt,gamma=1.0 if args.architecture=='tssl_cnn' else .98)
     ema=ParameterEMA(model) if args.ema else None

@@ -8,7 +8,6 @@
 |---|---:|---:|---:|---|
 | 逻辑回归 | 7,850 | 92.41% | 0.993785 | 线性基线 |
 | M5 CNN | 1,128,180 | 99.69% | 0.999961 | 数据增强和 EMA |
-| 小 M5 CNN | 210,376 | 99.66% | 0.999994 | 参数量匹配 TSSL |
 | TSSL 结构 CNN | 210,375 | 99.35% | 0.999971 | 连续激活，结构匹配 TSSL |
 | TSSL-BP SNN | 210,375 | 99.27% | 0.998658 | 脉冲模型 |
 
@@ -25,7 +24,6 @@ uv sync --locked
 uv run --locked python mnist/prepare_data.py
 uv run --locked python mnist/train_logistic.py --epochs 20
 uv run --locked python mnist/train_cnn.py --epochs 150 --augment --ema --tag repro_seed42
-uv run --locked python mnist/train_cnn.py --architecture m5_small --epochs 150 --augment --ema --tag matched_seed42
 uv run --locked python mnist/train_cnn.py --architecture tssl_cnn --epochs 100 --batch-size 50 --lr 0.0005 --seed 42 --tag aligned_seed42
 uv run --locked python mnist/train_tssl.py --epochs 100 --seed 42 --tag repro_seed42
 uv run --locked pytest -q
