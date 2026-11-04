@@ -64,6 +64,14 @@ uv run --locked python mnist/train_tssl.py --hidden-size 1712 --epochs 100 --see
 
 为核对 TSSL 官方结果，可以单独运行 `uv run --locked python mnist/train_tssl.py --official-protocol --epochs 100 --seed 3 --tag official_seed3`。该模式使用全部 60,000 个官方训练样本，并参照官方训练脚本每轮在官方测试集选取最佳权重（相同准确率取较后一轮）。因此输出的测试准确率参与了模型选择，不能作为独立测试估计，也不能与使用独立验证集选模的实验直接当成同等条件比较。此适配显式固定 PyTorch CPU 随机种子并使用零数据加载工作进程；官方脚本只显式设置 CUDA 和 NumPy 种子、使用四个工作进程。官方仓库 YAML 当前默认 200 轮，此处使用论文报告的 100 轮。官方源码核对版本为 ffaac71d3344172980f048d98b123e40c5420401。
 
+PLIF 的 `train_plif.py` 接入[作者代码](https://github.com/fangwei123456/Parametric-Leaky-Integrate-and-Fire-Spiking-Neuron)版本 `f644ff652f8551021c8b45d5702f38b92a3bce72` 及作者指定的 [SpikingJelly](https://github.com/fangwei123456/spikingjelly) 版本 `73f94ab983d0167623015537f7d4460b064cfca1`，不将外部源码纳入本仓库。命令需要指定两个源码目录：
+
+```bash
+uv run --locked python mnist/train_plif.py --plif-source /path/to/PLIF --sj-source /path/to/spikingjelly --epochs 1024 --seed 2020 --tag author_seed2020
+```
+
+该实验采用作者的 15% 按类别切分（实际训练 51,005、验证 8,995）、随机增强、验证集打乱并丢弃不满批次、8 时间步、Adam 和余弦学习率。作者代码每轮计算测试准确率；本适配只在训练结束选定验证集最佳模型后测试一次。为了适配本机使用零个数据加载工作进程（作者为 4），数据增强的随机轨迹会不同；属于近似复现。每轮保存模型、优化器和随机数检查点，可加 `--resume` 续训。
+
 ## 来源
 
 - CNN：An 等，[An Ensemble of Simple Convolutional Neural Network Models for MNIST Digit Recognition](https://arxiv.org/abs/2008.10400)，[作者代码](https://github.com/ansh941/MnistSimpleCNN)。
