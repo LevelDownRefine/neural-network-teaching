@@ -1,4 +1,4 @@
-"""Count dense convolution and linear MACs for one MNIST inference."""
+"""Estimate dense convolution and linear floating-point operations per input."""
 
 import argparse
 import json
@@ -106,9 +106,19 @@ def main():
     counts = all_counts()
     if args.model:
         counts = {args.model: counts[args.model]}
-    for record in counts.values():
-        record["affine_flops_approx"] = 2 * record["macs"]
-    print(json.dumps(counts, indent=2))
+    output = {
+        name: {
+            "parameters": record["parameters"],
+            "steps": record["steps"],
+            "layers": [
+                {"name": layer["name"], "flops_approx_per_input": 2 * layer["macs"]}
+                for layer in record["layers"]
+            ],
+            "flops_approx_per_input": 2 * record["macs"],
+        }
+        for name, record in counts.items()
+    }
+    print(json.dumps(output, indent=2))
 
 
 if __name__ == "__main__":

@@ -1,6 +1,9 @@
+import json
+import sys
 from copy import deepcopy
 
 import yaml
+from utils import complexity
 from utils.complexity import ROOT, all_counts, count_tssl
 
 
@@ -34,3 +37,14 @@ def test_tssl_compute_scales_with_time_steps_but_parameters_do_not():
         960000,
         15000,
     ]
+
+
+def test_command_reports_floating_point_operations(monkeypatch, capsys):
+    monkeypatch.setattr(sys, "argv", ["complexity", "tssl"])
+    complexity.main()
+    result = json.loads(capsys.readouterr().out)["tssl"]
+    assert result["flops_approx_per_input"] == 13710000
+    assert (
+        sum(layer["flops_approx_per_input"] for layer in result["layers"]) == 13710000
+    )
+    assert "macs" not in result
