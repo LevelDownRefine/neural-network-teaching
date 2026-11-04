@@ -12,7 +12,9 @@ mnist/results/cnn_m5_repro*/
 mnist/results/cnn_sopcnn_*/
 mnist/results/cnn_m5_small_*/
 mnist/results/tssl_matched_*/
+mnist/results/tssl_official_*/
 mnist/results/matched_status.json
+mnist/results/official_status.json
 mnist/results/sopcnn_queue_status.json
 mnist/results/tssl_repro*/
 mnist/results/spikebp/

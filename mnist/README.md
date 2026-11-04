@@ -56,6 +56,8 @@ uv run --locked python mnist/train_tssl.py --hidden-size 1712 --epochs 100 --see
 
 依赖锁定 PyTorch 2.11.0 和 torchvision 0.26.0：Windows 选择 CUDA 12.8 构建（需要兼容的 NVIDIA 驱动），Linux 选择 CPU 构建，用于轻量测试；Linux 上运行 SNN 需要另行配置匹配的 CUDA PyTorch 环境。GitHub Actions 在 CPU 上运行测试，不下载 MNIST 或执行完整训练。
 
+为核对 TSSL 官方结果，可以单独运行 `uv run --locked python mnist/train_tssl.py --official-protocol --epochs 100 --seed 3 --tag official_seed3`。该模式使用全部 60,000 个官方训练样本，并参照官方训练脚本每轮在官方测试集选取最佳权重（相同准确率取较后一轮）。因此输出的测试准确率参与了模型选择，不能作为独立测试估计，也不能与使用独立验证集选模的实验直接当成同等条件比较。此适配显式固定 PyTorch CPU 随机种子并使用零数据加载工作进程；官方脚本只显式设置 CUDA 和 NumPy 种子、使用四个工作进程。官方仓库 YAML 当前默认 200 轮，此处使用论文报告的 100 轮。官方源码核对版本为 ffaac71d3344172980f048d98b123e40c5420401。
+
 ## 来源
 
 - CNN：An 等，[An Ensemble of Simple Convolutional Neural Network Models for MNIST Digit Recognition](https://arxiv.org/abs/2008.10400)，[作者代码](https://github.com/ansh941/MnistSimpleCNN)。
