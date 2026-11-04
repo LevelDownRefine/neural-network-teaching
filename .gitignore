@@ -14,12 +14,9 @@ mnist/results/cnn_tssl_cnn_*/
 mnist/results/aligned_status.json
 mnist/results/tssl_matched_*/
 mnist/results/tssl_official_*/
-mnist/results/plif_*/
-mnist/results/plif_status.json
 mnist/results/matched_status.json
 mnist/results/official_status.json
 mnist/results/tssl_repro*/
-mnist/results/spikebp/
 mnist/results/*.log
 mnist/results/*_pid.txt
 mnist/results/reproduction_status.json

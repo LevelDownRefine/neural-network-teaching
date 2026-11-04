@@ -37,8 +37,6 @@
       "source": "tssl/classification.json"
     }
   ],
-  "missing": [
-    "spikebp"
-  ],
-  "note": "TSSL split seed 3; other models seed 42. AUC uses softmax scores; SNN score semantics differ. SpikeBP is pending until full test evaluation."
+  "missing": [],
+  "note": "TSSL split seed 3; other models seed 42. AUC uses softmax scores; SNN score semantics differ."
 }

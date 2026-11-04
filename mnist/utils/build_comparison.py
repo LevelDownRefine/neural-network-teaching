@@ -8,8 +8,7 @@ ROOT=Path(__file__).resolve().parent.parent
 OUT=ROOT/'results'/'comparison'
 SOURCES=[('logistic','logistic_kair/metrics.json','test','logistic_kair/auc.json'),
          ('cnn_m5','cnn_m5_kair/metrics.json','test',None),
-         ('tssl','tssl/classification.json',None,None),
-         ('spikebp','spikebp/metrics.json','test',None)]
+         ('tssl','tssl/classification.json',None,None)]
 
 def main():
     OUT.mkdir(parents=True,exist_ok=True)
@@ -37,7 +36,7 @@ def main():
         if rows:
             with (OUT/f'{name}.csv').open('w',encoding='utf-8-sig',newline='') as f:
                 writer=csv.DictWriter(f,fieldnames=rows[0].keys()); writer.writeheader(); writer.writerows(rows)
-    (OUT/'manifest.json').write_text(json.dumps({'available':summary,'missing':missing,'note':'TSSL split seed 3; other models seed 42. AUC uses softmax scores; SNN score semantics differ. SpikeBP is pending until full test evaluation.'},indent=2),encoding='utf-8')
+    (OUT/'manifest.json').write_text(json.dumps({'available':summary,'missing':missing,'note':'TSSL split seed 3; other models seed 42. AUC uses softmax scores; SNN score semantics differ.'},indent=2),encoding='utf-8')
     print('available:', ', '.join(row['model'] for row in summary), '; pending:', ', '.join(missing))
 
 if __name__=='__main__': main()
