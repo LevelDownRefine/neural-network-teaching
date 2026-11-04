@@ -51,6 +51,13 @@ uv run --locked ruff format --check .
 
 CNN 和 TSSL 按轮保存检查点；用相同参数加 `--resume` 续训。`--max-batches` 仅用于代码检查。
 
+TSSL 可加 `--ema` 使用权重平均，加 `--augment` 启用训练集旋转和平移；这两个选项不能用于 `--official-protocol`。例如：
+
+```bash
+uv run --locked python mnist/train_tssl.py --epochs 100 --seed 42 --ema --tag ema_seed42
+uv run --locked python mnist/train_tssl.py --epochs 100 --seed 42 --augment --ema --tag augment_ema_seed42
+```
+
 官方协议使用 `train_tssl.py --official-protocol --epochs 100 --seed 3 --tag official_seed3`。本实现固定 PyTorch CPU 随机种子、使用 0 个数据加载进程；官方脚本只显式设置 CUDA 和 NumPy 种子、使用 4 个进程。官方配置文件为 200 轮，此处采用论文的 100 轮；核对的源码版本为 `ffaac71d3344172980f048d98b123e40c5420401`。
 
 ## 评估

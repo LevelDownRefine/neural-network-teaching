@@ -4,6 +4,7 @@ import argparse
 import json
 import random
 import sys
+from contextlib import nullcontext
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -16,6 +17,7 @@ from torchvision import datasets, transforms
 from data_pipeline.mnist import mnist_loaders
 from utils.checkpoints import prepare_output, save_training, restore_best, cpu_snapshot
 from utils.cli import positive_int
+from utils.ema import ParameterEMA
 from utils.experiment import run_epochs
 from utils.evaluation import evaluate_batches
 from utils.io import atomic_write_json
@@ -31,6 +33,8 @@ def main():
     p.add_argument("--batch-size", type=int, default=50)
     p.add_argument("--seed", type=int, default=3)
     p.add_argument("--hidden-size", type=int, default=300)
+    p.add_argument("--augment", action="store_true")
+    p.add_argument("--ema", action="store_true")
     p.add_argument(
         "--official-protocol",
         action="store_true",
@@ -45,6 +49,10 @@ def main():
     p.add_argument("--tag", default="")
     p.add_argument("--resume", action="store_true")
     a = p.parse_args()
+    if a.official_protocol and (a.augment or a.ema):
+        p.error("--augment and --ema are not part of the official protocol")
+    if (a.augment or a.ema) and not a.tag:
+        p.error("use --tag for modified experiments")
     if a.cpu_smoke:
         if not a.max_batches:
             raise ValueError("--cpu-smoke requires --max-batches")
@@ -82,11 +90,15 @@ def main():
         loaders = (trainloader, testloader, testloader)
     else:
         loaders = mnist_loaders(
-            a.batch_size, a.seed, normalization=((0.1307,), (0.3081,))
+            a.batch_size,
+            a.seed,
+            normalization=((0.1307,), (0.3081,)),
+            augmentation=a.augment,
         )
     net = cnns.Network(nc, cfg["Layers"], [1, 28, 28]).cuda()
     err = loss_f.SpikeLoss(nc).cuda()
     opt = torch.optim.AdamW(net.get_parameters(), lr=nc["lr"], betas=(0.9, 0.999))
+    ema = ParameterEMA(net) if a.ema else None
     steps = nc["n_steps"]
     desired = torch.tensor([0, 1, 1, 1, 1], device=device).view(1, 1, 1, 1, steps)
     desired = loss_f.psp(desired, nc).view(1, 1, 1, steps)
@@ -129,6 +141,8 @@ def main():
                     torch.nn.utils.clip_grad_norm_(net.get_parameters(), 1)
                     opt.step()
                     net.weight_clipper()
+                    if ema:
+                        ema.update(net)
                     losses += loss.item()
             scores = pred.sum(dim=4).squeeze(-1).squeeze(-1)
             correct += (scores.argmax(1) == y).sum().item()
@@ -151,11 +165,17 @@ def main():
             raise ValueError("resume configuration differs: hidden_size")
         if state["config"].get("official_protocol", False) != a.official_protocol:
             raise ValueError("resume protocol differs")
+        for key in ("augment", "ema"):
+            if state["config"].get(key, False) != getattr(a, key):
+                raise ValueError("resume configuration differs: " + key)
         for key in ("batch_size", "seed", "max_batches", "cpu_smoke"):
             if state["config"][key] != getattr(a, key):
                 raise ValueError("resume configuration differs: " + key)
         net.load_state_dict(state["net"])
         opt.load_state_dict(state["optimizer"])
+        if ema:
+            ema.shadow = {k: v.to(device) for k, v in state["ema_shadow"].items()}
+            ema.updates = state["ema_updates"]
         best = state["best"]
         history = state["history"]
         start_epoch = state["epoch"]
@@ -179,6 +199,8 @@ def main():
             "numpy_rng": np.random.get_state(),
             "torch_rng": torch.get_rng_state(),
             "cuda_rng": torch.cuda.get_rng_state_all() if not a.cpu_smoke else [],
+            "ema_shadow": ema.shadow if ema else None,
+            "ema_updates": ema.updates if ema else 0,
         }
         save_training(state, out)
         (out / "progress.json").write_text(
@@ -205,6 +227,7 @@ def main():
             ("test_selection" if a.official_protocol else "validation"): va,
         },
         save_epoch=save_epoch,
+        validation_context=(lambda: ema.apply(net)) if ema else nullcontext,
         replace_on_tie=a.official_protocol,
     )
     ck = torch.load(out / "best.pt", weights_only=True)
