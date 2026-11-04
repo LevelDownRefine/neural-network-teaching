@@ -1,48 +1,87 @@
 """Build a shared report from completed test evaluations without rerunning models."""
+
 import csv
 import json
 from pathlib import Path
-import numpy as np
 
-ROOT=Path(__file__).resolve().parent.parent
-OUT=ROOT/'results'/'comparison'
-SOURCES=[('logistic','logistic/metrics.json','test',None),
-         ('logistic_legacy','logistic_kair/metrics.json','test','logistic_kair/auc.json'),
-         ('cnn_m5_legacy','cnn_m5_kair/metrics.json','test',None),
-         ('cnn_m5_repro','cnn_m5_repro_seed42/metrics.json','test',None),
-         ('cnn_tssl_aligned','cnn_tssl_cnn_aligned_seed42/metrics.json','test',None),
-         ('tssl_legacy','tssl/classification.json',None,None),
-         ('tssl_repro','tssl_repro_seed42/metrics.json','test',None)]
+import numpy as np
+from utils.results import discover
+
+ROOT = Path(__file__).resolve().parent.parent
+OUT = ROOT / "results" / "comparison"
+
 
 def main():
-    OUT.mkdir(parents=True,exist_ok=True)
-    summary=[]; classes=[]; missing=[]
-    for model,filename,key,auc_file in SOURCES:
-        path=ROOT/'results'/filename
-        if not path.exists(): missing.append(model); continue
-        payload=json.loads(path.read_text(encoding='utf-8')); metrics=payload[key] if key else payload
-        cm=np.asarray(metrics['confusion_matrix'],dtype=np.int64)
-        if cm.shape!=(10,10) or cm.sum()!=metrics['count']: raise ValueError(f'invalid confusion matrix: {model}')
-        correct=int(np.trace(cm)); accuracy=correct/int(cm.sum())
-        if abs(accuracy-metrics['accuracy'])>1e-12: raise ValueError(f'accuracy mismatch: {model}')
-        auc=metrics.get('macro_auc_ovr'); per_auc=None
-        if auc_file:
-            auc_path=ROOT/'results'/auc_file
-            if auc_path.exists():
-                auc_data=json.loads(auc_path.read_text(encoding='utf-8'))
-                auc=auc_data['macro_auc_ovr']; per_auc=auc_data['per_class_auc']
-        rows=metrics['per_class']
-        for i,row in enumerate(rows):
-            classes.append({'model':model,'digit':row['digit'],'precision':row['precision'],'recall':row['recall'],'f1':row['f1'],'support':row['support'],'auc':per_auc[i] if per_auc is not None else row.get('auc')})
-        summary.append({'model':model,'test_accuracy':accuracy,'test_error':1-accuracy,'correct':correct,'total':int(cm.sum()),'macro_precision':float(np.mean([r['precision'] for r in rows])),'macro_recall':float(np.mean([r['recall'] for r in rows])),'macro_f1':float(np.mean([r['f1'] for r in rows])),'macro_auc_ovr':auc,'source':filename})
-        with (OUT/f'{model}_confusion.csv').open('w',encoding='utf-8-sig',newline='') as f:
-            writer=csv.writer(f); writer.writerow(['true\\predicted',*range(10)])
-            for i,row in enumerate(cm): writer.writerow([i,*row.tolist()])
-    for name,rows in [('summary',summary),('per_class',classes)]:
+    OUT.mkdir(parents=True, exist_ok=True)
+    summary, classes = [], []
+    for record in discover(ROOT / "results"):
+        name, metrics = record["name"], record["metrics"]
+        cm = np.asarray(metrics["confusion_matrix"], dtype=np.int64)
+        if cm.shape != (10, 10) or cm.sum() != metrics["count"]:
+            raise ValueError(f"invalid confusion matrix: {name}")
+        accuracy = int(np.trace(cm)) / int(cm.sum())
+        if abs(accuracy - metrics["accuracy"]) > 1e-12:
+            raise ValueError(f"accuracy mismatch: {name}")
+        rows = metrics["per_class"]
+        for row in rows:
+            classes.append(
+                {
+                    "model": name,
+                    **{
+                        k: row.get(k)
+                        for k in (
+                            "digit",
+                            "precision",
+                            "recall",
+                            "f1",
+                            "support",
+                            "auc",
+                        )
+                    },
+                }
+            )
+        summary.append(
+            {
+                "model": name,
+                "test_accuracy": accuracy,
+                "test_error": 1 - accuracy,
+                "correct": int(np.trace(cm)),
+                "total": int(cm.sum()),
+                "macro_precision": float(np.mean([r["precision"] for r in rows])),
+                "macro_recall": float(np.mean([r["recall"] for r in rows])),
+                "macro_f1": float(np.mean([r["f1"] for r in rows])),
+                "macro_auc_ovr": metrics.get("macro_auc_ovr"),
+                "seed": record["seed"],
+                "selection": record["selection"],
+                "split": json.dumps(record["split"]) if record["split"] else None,
+                "source": str(record["path"].relative_to(ROOT / "results")),
+            }
+        )
+        with (OUT / f"{name}_confusion.csv").open(
+            "w", encoding="utf-8-sig", newline=""
+        ) as f:
+            writer = csv.writer(f)
+            writer.writerow(["true\\predicted", *range(10)])
+            for i, row in enumerate(cm):
+                writer.writerow([i, *row.tolist()])
+    for name, rows in [("summary", summary), ("per_class", classes)]:
         if rows:
-            with (OUT/f'{name}.csv').open('w',encoding='utf-8-sig',newline='') as f:
-                writer=csv.DictWriter(f,fieldnames=rows[0].keys()); writer.writeheader(); writer.writerows(rows)
-    (OUT/'manifest.json').write_text(json.dumps({'available':summary,'missing':missing,'note':'Legacy TSSL used seed 3; new TSSL and aligned CNN use seed 42. Protocols and score semantics differ; see each experiment config.'},indent=2),encoding='utf-8')
-    print('available:', ', '.join(row['model'] for row in summary), '; pending:', ', '.join(missing))
+            with (OUT / f"{name}.csv").open("w", encoding="utf-8-sig", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=rows[0].keys())
+                writer.writeheader()
+                writer.writerows(rows)
+    (OUT / "manifest.json").write_text(
+        json.dumps(
+            {
+                "available": summary,
+                "note": "Check seed, selection and configuration before comparing experiments.",
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    print("available:", ", ".join(row["model"] for row in summary))
 
-if __name__=='__main__': main()
+
+if __name__ == "__main__":
+    main()
