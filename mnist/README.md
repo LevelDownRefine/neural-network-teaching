@@ -15,9 +15,9 @@
 
 TSSL 结构 CNN 与 SNN 的卷积、池化、全连接尺寸和参数量一致；CNN 使用 ReLU 和交叉熵，SNN 使用脉冲神经元和脉冲核损失。
 
-TSSL 官方协议实验使用全部 60,000 张训练图、按测试集准确率选模，结果为 99.36%、AUC 0.999066；测试集参与选模，不宜与上表直接比较。大 TSSL（1,128,175 个参数）暂停于第 55 轮，本机保留检查点。
+TSSL 官方协议实验使用全部 60,000 张训练图、按测试集准确率选模，结果为 99.36%、AUC 0.999066；测试集参与选模，不宜与上表直接比较。
 
-较新的结果和权重保存在本机 `results/`，不纳入 Git；仓库中的历史汇总不包含全部实验。
+[混淆矩阵和逐类指标](RESULTS.md)列出了上表各模型的完整结果。较新的权重和原始结果保存在本机 `results/`，不纳入 Git。
 
 ## 安装与训练
 
@@ -32,10 +32,9 @@ uv run --locked python mnist/train_cnn.py --architecture tssl_cnn --epochs 100 -
 uv run --locked python mnist/train_tssl.py --epochs 100 --seed 42 --tag repro_seed42
 uv run --locked ruff check .
 uv run --locked ruff format --check .
-uv run --locked pytest -q
 ```
 
-CNN 和 TSSL 按轮保存检查点；用相同参数加 `--resume` 续训。大 TSSL 的续训参数为 `--hidden-size 1712 --epochs 100 --seed 42 --tag matched_seed42 --resume`。`--max-batches` 仅用于代码检查。
+CNN 和 TSSL 按轮保存检查点；用相同参数加 `--resume` 续训。`--max-batches` 仅用于代码检查。
 
 官方协议使用 `train_tssl.py --official-protocol --epochs 100 --seed 3 --tag official_seed3`。本实现固定 PyTorch CPU 随机种子、使用 0 个数据加载进程；官方脚本只显式设置 CUDA 和 NumPy 种子、使用 4 个进程。官方配置文件为 200 轮，此处采用论文的 100 轮；核对的源码版本为 `ffaac71d3344172980f048d98b123e40c5420401`。
 
