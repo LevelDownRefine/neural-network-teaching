@@ -14,6 +14,7 @@ from torchvision import datasets, transforms
 from utils.cli import positive_int
 from utils.evaluate_checkpoint import load_predictor
 from utils.io import atomic_write_json
+from utils.precision import inference_precision
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -53,6 +54,7 @@ def main(argv=None):
     p.add_argument("--weights", required=True, type=Path)
     p.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
     p.add_argument("--batch-size", type=positive_int, default=512)
+    p.add_argument("--precision", choices=("fp32", "bf16"), default="fp32")
     p.add_argument("--warmup", type=positive_int, default=20)
     p.add_argument("--seconds", type=float, default=60.0)
     p.add_argument("--power-interval", type=float, default=1.0)
@@ -85,7 +87,7 @@ def main(argv=None):
     )
     samples = []
     stop = threading.Event()
-    with torch.inference_mode():
+    with torch.inference_mode(), inference_precision(args.precision, device):
         for _ in range(args.warmup):
             predict(batch)
         synchronize(device)
@@ -115,6 +117,10 @@ def main(argv=None):
     mean_power = statistics.mean(watts) if len(watts) >= 2 else None
     result = {
         "mode": "offline",
+        "precision": args.precision,
+        "precision_policy": "PyTorch autocast"
+        if args.precision == "bf16"
+        else "FP32 default",
         "model": args.model,
         "weights": str(args.weights),
         "best_epoch": checkpoint.get("epoch"),

@@ -80,17 +80,20 @@ uv run --locked python mnist/evaluate.py checkpoint --model tssl_cnn --weights m
 ## Offline 推理基准
 
 ```bash
-uv run --locked python mnist/benchmark.py offline --model tssl_cnn --weights mnist/results/cnn_tssl_cnn_augment_ema_seed42/best.pt --batch-size 1024 --seconds 30 --output mnist/results/cnn_tssl_cnn_augment_ema_seed42/offline.json
-uv run --locked python mnist/benchmark.py offline --model tssl --weights mnist/results/tssl_augment_ema_seed42/best.pt --batch-size 512 --seconds 30 --output mnist/results/tssl_augment_ema_seed42/offline.json
+uv run --locked python mnist/benchmark.py offline --model tssl_cnn --weights mnist/results/cnn_tssl_cnn_augment_ema_seed42/best.pt --batch-size 1024 --precision bf16 --seconds 30 --output mnist/results/cnn_tssl_cnn_augment_ema_seed42/offline_bf16.json
+uv run --locked python mnist/benchmark.py offline --model tssl --weights mnist/results/tssl_augment_ema_seed42/best.pt --batch-size 512 --precision bf16 --seconds 30 --output mnist/results/tssl_augment_ema_seed42/offline_bf16.json
+uv run --locked python mnist/evaluate.py checkpoint --model tssl --weights mnist/results/tssl_augment_ema_seed42/best.pt --batch-size 512 --precision bf16 --output evaluation_bf16.json
 ```
 
-图像预先放在设备上；预热后连续推理，报告吞吐量、PyTorch 峰值分配显存和 GPU 板卡平均功率。计时包含模型调用、GPU 同步和 TSSL 时间步展开，不含数据加载、预处理和传输。`nvidia-smi` 默认约每秒采集功率；平均功率乘运行时间估算板卡能耗，包含 GPU 空闲和其他任务功耗，不含 CPU 等整机用电。少于两次有效采样时不估算功率和能耗。
+`--precision bf16` 使用 PyTorch autocast，权重和输入保留 FP32，适用的算子使用 BF16；TSSL 的部分状态计算仍使用 FP32。默认 `fp32` 保持后端默认设置。图像预先放在设备上；预热后连续推理，报告吞吐量、PyTorch 峰值分配显存和 GPU 板卡平均功率。计时包含模型调用、GPU 同步和 TSSL 时间步展开，不含数据加载、预处理和传输。
 
-以下为 RTX 5070 Ti Laptop GPU、PyTorch 2.11.0+cu128 的单次实验，每档测量约 30 秒，从 batch 1、128、512、1024、2048 中选择吞吐量最高的档位；不同硬件或批量下结果可能不同。
+`nvidia-smi` 默认约每秒采集功率；平均功率乘运行时间估算板卡能耗，包含 GPU 空闲和其他任务功耗，不含 CPU 等整机用电。少于两次有效采样时不估算功率和能耗。
 
-| 模型 | batch | 吞吐量（图片/秒） | 平均板卡功率（W） | 板卡能耗估算（mJ/图） |
-|---|---:|---:|---:|---:|
-| 逻辑回归 | 2048 | 22,289,579 | 63.8 | 0.0029 |
-| M5 CNN | 128 | 51,369 | 110.4 | 2.150 |
-| TSSL 结构 CNN | 1024 | 1,133,423 | 119.3 | 0.105 |
-| TSSL-BP SNN | 512 | 17,152 | 97.8 | 5.703 |
+以下为 RTX 5070 Ti Laptop GPU、Windows、PyTorch 2.11.0+cu128 的 BF16 autocast 单次实验，吞吐量各测约 30 秒；batch 沿用此前 FP32 扫描中吞吐量最高的档位，不表示 BF16 的最优 batch。准确率和 AUC 使用同一精度重新评估完整测试集，不参与选模。
+
+| 模型 | batch | 吞吐量（图片/秒） | 平均板卡功率（W） | 板卡能耗估算（mJ/图） | 测试准确率 | Macro OvR AUC |
+|---|---:|---:|---:|---:|---:|---:|
+| 逻辑回归 | 2048 | 16,549,874 | 50.1 | 0.0030 | 92.41% | 0.993786 |
+| M5 CNN | 128 | 75,218 | 100.3 | 1.333 | 99.70% | 0.999961 |
+| TSSL 结构 CNN | 1024 | 769,186 | 107.1 | 0.139 | 99.59% | 0.999979 |
+| TSSL-BP SNN | 512 | 15,089 | 101.9 | 6.755 | 99.37% | 0.999372 |

@@ -13,6 +13,7 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from utils.evaluation import evaluate_batches
 from utils.io import atomic_write_json
+from utils.precision import inference_precision
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -71,6 +72,7 @@ def main():
     parser.add_argument("--weights", required=True, type=Path)
     parser.add_argument("--device", default="auto", choices=("auto", "cpu", "cuda"))
     parser.add_argument("--batch-size", type=int, default=50)
+    parser.add_argument("--precision", choices=("fp32", "bf16"), default="fp32")
     parser.add_argument(
         "--output", type=Path, help="write evaluation to this JSON file"
     )
@@ -92,12 +94,15 @@ def main():
     )
     predict, checkpoint = load_predictor(args.model, args.weights, device)
 
+    with inference_precision(args.precision, device):
+        metrics = evaluate_batches(loader, predict)
     result = {
         "model": args.model,
+        "precision": args.precision,
         "weights": str(args.weights),
         "best_epoch": checkpoint.get("epoch"),
         "evaluation": "official MNIST test set; selection protocol must be checked in original experiment",
-        "test": evaluate_batches(loader, predict),
+        "test": metrics,
     }
     if args.output:
         atomic_write_json(args.output, result)

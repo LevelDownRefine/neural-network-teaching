@@ -5,7 +5,10 @@ import torch
 from utils import benchmark_offline
 
 
-def test_offline_benchmark_counts_images_and_handles_no_gpu_power(monkeypatch, capsys):
+@pytest.mark.parametrize("precision", ["fp32", "bf16"])
+def test_offline_benchmark_counts_images_and_handles_no_gpu_power(
+    monkeypatch, capsys, precision
+):
     class FakeMNIST:
         def __init__(self, *args, **kwargs):
             pass
@@ -18,13 +21,19 @@ def test_offline_benchmark_counts_images_and_handles_no_gpu_power(monkeypatch, c
 
     clock = iter([10.0, 10.0, 10.2, 10.4, 10.6])
     batches = []
+    autocast_states = []
+
+    def predict(batch):
+        batches.append(len(batch))
+        autocast_states.append(torch.is_autocast_enabled("cpu"))
+
     monkeypatch.setattr(benchmark_offline.datasets, "MNIST", FakeMNIST)
     monkeypatch.setattr(benchmark_offline.time, "perf_counter", lambda: next(clock))
     monkeypatch.setattr(
         benchmark_offline,
         "load_predictor",
         lambda model, weights, device: (
-            lambda batch: batches.append(len(batch)),
+            predict,
             {"epoch": 3},
         ),
     )
@@ -42,11 +51,24 @@ def test_offline_benchmark_counts_images_and_handles_no_gpu_power(monkeypatch, c
             "1",
             "--seconds",
             "0.4",
+            "--precision",
+            precision,
         ]
     )
     result = json.loads(capsys.readouterr().out)
     assert result["throughput"]["images"] == 8
     assert result["throughput"]["images_per_second"] == pytest.approx(8 / 0.6)
     assert batches == [4, 4, 4]
+    assert result["precision"] == precision
+    assert autocast_states == [precision == "bf16"] * 3
     assert result["power"]["mean_board_watts"] is None
     assert result["power"]["estimated_board_joules"] is None
+
+
+def test_bf16_policy_runs_supported_cpu_ops_in_bfloat16():
+    from utils.precision import inference_precision
+
+    x = torch.randn(4, 4)
+    with inference_precision("bf16", torch.device("cpu")):
+        result = x @ x
+    assert result.dtype == torch.bfloat16
