@@ -76,3 +76,21 @@ uv run --locked python mnist/evaluate.py checkpoint --model tssl_cnn --weights m
 
 - M5 CNN：[论文](https://arxiv.org/abs/2008.10400)、[作者代码](https://github.com/ansh941/MnistSimpleCNN)。
 - TSSL-BP：[论文](https://papers.nips.cc/paper/2020/file/8bdb5058376143fa358981954e7626b8-Paper.pdf)、[作者代码](https://github.com/stonezwr/TSSL-BP)（MIT）。
+
+## Offline 推理基准
+
+```bash
+uv run --locked python mnist/benchmark.py offline --model tssl_cnn --weights mnist/results/cnn_tssl_cnn_augment_ema_seed42/best.pt --batch-size 1024 --seconds 30 --output mnist/results/cnn_tssl_cnn_augment_ema_seed42/offline.json
+uv run --locked python mnist/benchmark.py offline --model tssl --weights mnist/results/tssl_augment_ema_seed42/best.pt --batch-size 512 --seconds 30 --output mnist/results/tssl_augment_ema_seed42/offline.json
+```
+
+图像预先放在设备上；预热后连续推理，报告吞吐量、PyTorch 峰值分配显存和 GPU 板卡平均功率。计时包含模型调用、GPU 同步和 TSSL 时间步展开，不含数据加载、预处理和传输。`nvidia-smi` 默认约每秒采集功率；平均功率乘运行时间估算板卡能耗，包含 GPU 空闲和其他任务功耗，不含 CPU 等整机用电。少于两次有效采样时不估算功率和能耗。
+
+以下为 RTX 5070 Ti Laptop GPU、PyTorch 2.11.0+cu128 的单次实验，每档测量约 30 秒，从 batch 1、128、512、1024、2048 中选择吞吐量最高的档位；不同硬件或批量下结果可能不同。
+
+| 模型 | batch | 吞吐量（图片/秒） | 平均板卡功率（W） | 板卡能耗估算（mJ/图） |
+|---|---:|---:|---:|---:|
+| 逻辑回归 | 2048 | 22,289,579 | 63.8 | 0.0029 |
+| M5 CNN | 128 | 51,369 | 110.4 | 2.150 |
+| TSSL 结构 CNN | 1024 | 1,133,423 | 119.3 | 0.105 |
+| TSSL-BP SNN | 512 | 17,152 | 97.8 | 5.703 |
