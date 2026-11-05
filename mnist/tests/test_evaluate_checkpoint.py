@@ -2,6 +2,7 @@ import json
 import sys
 
 import evaluate
+import pytest
 import torch
 from torch import nn
 from utils import evaluate_checkpoint
@@ -54,3 +55,61 @@ def test_logistic_checkpoint_evaluation_uses_common_metrics(tmp_path, monkeypatc
     assert result["test"]["confusion_matrix"][3][3] == 1
     assert sum(row[3] for row in result["test"]["confusion_matrix"]) == 10
     assert result["test"]["macro_auc_ovr"] == 0.5
+
+
+@pytest.mark.parametrize("engine", ["eager", "inductor"])
+def test_checkpoint_evaluation_uses_selected_engine(
+    tmp_path, monkeypatch, capsys, engine
+):
+    weights = tmp_path / "best.pt"
+    torch.save(
+        {
+            "model": nn.Sequential(nn.Flatten(), nn.Linear(784, 10)).state_dict(),
+            "epoch": 2,
+        },
+        weights,
+    )
+
+    class FakeMNIST(torch.utils.data.Dataset):
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __len__(self):
+            return 1
+
+        def __getitem__(self, index):
+            return torch.zeros(1, 28, 28), 0
+
+    def fake_evaluate(loader, predict):
+        assert predict(torch.zeros(1, 1, 28, 28)).dtype == torch.float32
+        return {"accuracy": 1.0, "macro_auc_ovr": 1.0, "count": 1}
+
+    compile_options = []
+
+    def fake_compile(predictor, **kwargs):
+        compile_options.append(kwargs)
+        return predictor
+
+    monkeypatch.setattr(torch, "compile", fake_compile)
+    monkeypatch.setattr(evaluate_checkpoint.datasets, "MNIST", FakeMNIST)
+    monkeypatch.setattr(evaluate_checkpoint, "evaluate_batches", fake_evaluate)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "evaluate",
+            "--model",
+            "logistic",
+            "--weights",
+            str(weights),
+            "--device",
+            "cpu",
+            "--engine",
+            engine,
+        ],
+    )
+    evaluate_checkpoint.main()
+    assert json.loads(capsys.readouterr().out)["accuracy"] == 1.0
+    assert compile_options == (
+        [{"backend": "inductor", "fullgraph": True}] if engine == "inductor" else []
+    )

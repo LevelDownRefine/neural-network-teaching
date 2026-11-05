@@ -12,6 +12,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from utils.evaluation import evaluate_batches
+from utils.inference import inference_engine
 from utils.io import atomic_write_json
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -71,6 +72,7 @@ def main():
     parser.add_argument("--weights", required=True, type=Path)
     parser.add_argument("--device", default="auto", choices=("auto", "cpu", "cuda"))
     parser.add_argument("--batch-size", type=int, default=50)
+    parser.add_argument("--engine", choices=("eager", "inductor"), default="eager")
     parser.add_argument(
         "--output", type=Path, help="write evaluation to this JSON file"
     )
@@ -91,13 +93,17 @@ def main():
         shuffle=False,
     )
     predict, checkpoint = load_predictor(args.model, args.weights, device)
+    predict = inference_engine(predict, args.engine)
 
+    with torch.inference_mode():
+        metrics = evaluate_batches(loader, lambda images: predict(images.to(device)))
     result = {
         "model": args.model,
+        "engine": args.engine,
         "weights": str(args.weights),
         "best_epoch": checkpoint.get("epoch"),
         "evaluation": "official MNIST test set; selection protocol must be checked in original experiment",
-        "test": evaluate_batches(loader, predict),
+        "test": metrics,
     }
     if args.output:
         atomic_write_json(args.output, result)

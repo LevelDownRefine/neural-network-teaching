@@ -5,7 +5,10 @@ import torch
 from utils import benchmark_offline
 
 
-def test_offline_benchmark_counts_images_and_handles_no_gpu_power(monkeypatch, capsys):
+@pytest.mark.parametrize("engine", ["eager", "inductor"])
+def test_offline_benchmark_counts_images_and_handles_no_gpu_power(
+    monkeypatch, capsys, engine
+):
     class FakeMNIST:
         def __init__(self, *args, **kwargs):
             pass
@@ -16,15 +19,26 @@ def test_offline_benchmark_counts_images_and_handles_no_gpu_power(monkeypatch, c
         def __getitem__(self, index):
             return torch.zeros(1, 28, 28), index
 
-    clock = iter([10.0, 10.0, 10.2, 10.4, 10.6])
+    clock = iter([9.0, 9.5, 10.0, 10.0, 10.2, 10.4, 10.6])
     batches = []
+    compile_options = []
+
+    def fake_compile(predictor, **kwargs):
+        compile_options.append(kwargs)
+        return predictor
+
+    monkeypatch.setattr(torch, "compile", fake_compile)
+
+    def predict(batch):
+        batches.append(len(batch))
+
     monkeypatch.setattr(benchmark_offline.datasets, "MNIST", FakeMNIST)
     monkeypatch.setattr(benchmark_offline.time, "perf_counter", lambda: next(clock))
     monkeypatch.setattr(
         benchmark_offline,
         "load_predictor",
         lambda model, weights, device: (
-            lambda batch: batches.append(len(batch)),
+            predict,
             {"epoch": 3},
         ),
     )
@@ -42,11 +56,17 @@ def test_offline_benchmark_counts_images_and_handles_no_gpu_power(monkeypatch, c
             "1",
             "--seconds",
             "0.4",
+            "--engine",
+            engine,
         ]
     )
     result = json.loads(capsys.readouterr().out)
     assert result["throughput"]["images"] == 8
     assert result["throughput"]["images_per_second"] == pytest.approx(8 / 0.6)
     assert batches == [4, 4, 4]
+    assert result["engine"] == engine
+    assert compile_options == (
+        [{"backend": "inductor", "fullgraph": True}] if engine == "inductor" else []
+    )
     assert result["power"]["mean_board_watts"] is None
     assert result["power"]["estimated_board_joules"] is None

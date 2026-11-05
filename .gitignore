@@ -3,6 +3,7 @@ __pycache__/
 .uv-cache/
 *.py[cod]
 .venv/
+.venv-wsl/
 gpu_packages/
 mnist/data/
 mnist/_external/
