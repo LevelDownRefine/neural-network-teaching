@@ -17,35 +17,10 @@ from utils.io import atomic_write_json
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--model", required=True, choices=("logistic", "m5", "tssl_cnn", "tssl")
-    )
-    parser.add_argument("--weights", required=True, type=Path)
-    parser.add_argument("--device", default="auto", choices=("auto", "cpu", "cuda"))
-    parser.add_argument("--batch-size", type=int, default=50)
-    parser.add_argument(
-        "--output", type=Path, help="write evaluation to this JSON file"
-    )
-    args = parser.parse_args()
-    device = torch.device(
-        ("cuda" if torch.cuda.is_available() else "cpu")
-        if args.device == "auto"
-        else args.device
-    )
-    checkpoint = torch.load(args.weights, map_location="cpu", weights_only=True)
-    normalize = args.model in ("tssl", "tssl_cnn")
-    transform = transforms.Compose(
-        [transforms.ToTensor()]
-        + ([transforms.Normalize((0.1307,), (0.3081,))] if normalize else [])
-    )
-    loader = DataLoader(
-        datasets.MNIST(ROOT / "data", train=False, download=False, transform=transform),
-        batch_size=args.batch_size,
-        shuffle=False,
-    )
-    if args.model == "tssl":
+def load_predictor(model_name, weights, device):
+    """Load a checkpoint and return a function that predicts on device tensors."""
+    checkpoint = torch.load(weights, map_location="cpu", weights_only=True)
+    if model_name == "tssl":
         if device.type != "cuda":
             raise RuntimeError("TSSL source requires CUDA")
         import yaml
@@ -78,12 +53,44 @@ def main():
             "logistic": lambda: nn.Sequential(nn.Flatten(), nn.Linear(784, 10)),
             "m5": ModelM5,
             "tssl_cnn": TSSLCNN,
-        }[args.model]().to(device)
+        }[model_name]().to(device)
         model.load_state_dict(checkpoint["model"])
         model.eval()
 
         def predict(images):
             return model(images.to(device))
+
+    return predict, checkpoint
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--model", required=True, choices=("logistic", "m5", "tssl_cnn", "tssl")
+    )
+    parser.add_argument("--weights", required=True, type=Path)
+    parser.add_argument("--device", default="auto", choices=("auto", "cpu", "cuda"))
+    parser.add_argument("--batch-size", type=int, default=50)
+    parser.add_argument(
+        "--output", type=Path, help="write evaluation to this JSON file"
+    )
+    args = parser.parse_args()
+    device = torch.device(
+        ("cuda" if torch.cuda.is_available() else "cpu")
+        if args.device == "auto"
+        else args.device
+    )
+    normalize = args.model in ("tssl", "tssl_cnn")
+    transform = transforms.Compose(
+        [transforms.ToTensor()]
+        + ([transforms.Normalize((0.1307,), (0.3081,))] if normalize else [])
+    )
+    loader = DataLoader(
+        datasets.MNIST(ROOT / "data", train=False, download=False, transform=transform),
+        batch_size=args.batch_size,
+        shuffle=False,
+    )
+    predict, checkpoint = load_predictor(args.model, args.weights, device)
 
     result = {
         "model": args.model,
