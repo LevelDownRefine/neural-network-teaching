@@ -85,18 +85,17 @@ WSL2 CUDA 环境（需支持 CUDA 的驱动和 C 编译器）：
 uv venv --managed-python --python 3.12 .venv-wsl
 uv pip install --python .venv-wsl/bin/python torch==2.15.0 torchvision==0.29.2 PyYAML==6.0.3
 .venv-wsl/bin/python mnist/benchmark.py offline --model tssl --weights mnist/results/tssl_augment_ema_seed42/best.pt --batch-size 512 --engine inductor --seconds 30 --output mnist/results/tssl_augment_ema_seed42/offline_inductor.json
-.venv-wsl/bin/python mnist/evaluate.py checkpoint --model tssl --weights mnist/results/tssl_augment_ema_seed42/best.pt --batch-size 512 --engine inductor --output evaluation_inductor.json
 ```
 
 该环境与仓库锁定的 Linux CPU 构建独立。`--engine inductor` 使用 `torch.compile(fullgraph=True)`，编译和预热时间单独记录，不计入吞吐量；默认 `eager`。精度使用 FP32 和后端默认设置。
 
 图像预先放在设备上；预热后连续推理，报告吞吐量、PyTorch 峰值分配显存和 GPU 板卡平均功率。计时包含模型调用、GPU 同步和 TSSL 时间步展开，不含数据加载、预处理和传输。`nvidia-smi` 默认约每秒采集功率；平均功率乘运行时间估算板卡能耗，包含 GPU 空闲和其他任务功耗，不含 CPU 等整机用电。少于两次有效采样时不估算功率和能耗。
 
-以下为 RTX 5070 Ti Laptop GPU、WSL2、PyTorch 2.15.0+cu132 的单次实验，均使用 Inductor 和默认 NCHW 输入；每档吞吐量测约 30 秒，编译和预热时间不计入。batch 沿用此前 FP32 扫描中吞吐量最高的档位，不表示 Inductor 的最优 batch。准确率和 AUC 使用同一编译配置重新评估完整测试集，不参与选模。
+以下为 RTX 5070 Ti Laptop GPU、WSL2、PyTorch 2.15.0+cu132 的单次实验，均使用 Inductor 和默认 NCHW 输入；每档吞吐量测约 30 秒，编译和预热时间不计入。batch 沿用此前 FP32 扫描中吞吐量最高的档位，不表示 Inductor 的最优 batch。
 
-| 模型 | batch | 吞吐量（图片/秒） | 平均板卡功率（W） | 板卡能耗估算（mJ/图） | 测试准确率 | Macro OvR AUC |
-|---|---:|---:|---:|---:|---:|---:|
-| 逻辑回归 | 2048 | 15,706,175 | 58.4 | 0.00372 | 92.41% | 0.993785 |
-| M5 CNN | 128 | 51,530 | 108.6 | 2.107 | 99.69% | 0.999961 |
-| TSSL 结构 CNN | 1024 | 1,328,729 | 104.6 | 0.0787 | 99.58% | 0.999979 |
-| TSSL-BP SNN | 512 | 84,937 | 110.3 | 1.298 | 99.38% | 0.998782 |
+| 模型 | batch | 吞吐量（图片/秒） | 平均板卡功率（W） | 板卡能耗估算（mJ/图） |
+|---|---:|---:|---:|---:|
+| 逻辑回归 | 2048 | 15,706,175 | 58.4 | 0.00372 |
+| M5 CNN | 128 | 51,530 | 108.6 | 2.107 |
+| TSSL 结构 CNN | 1024 | 1,328,729 | 104.6 | 0.0787 |
+| TSSL-BP SNN | 512 | 84,937 | 110.3 | 1.298 |
