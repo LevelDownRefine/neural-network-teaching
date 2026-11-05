@@ -16,6 +16,9 @@ mnist/results/tssl_official_*/
 mnist/results/matched_status.json
 mnist/results/official_status.json
 mnist/results/tssl_repro*/
+mnist/results/tssl_ema_*/
+mnist/results/tssl_augment_ema_*/
+mnist/results/tssl_ablation_status.json
 mnist/results/*.log
 mnist/results/*_pid.txt
 mnist/results/reproduction_status.json

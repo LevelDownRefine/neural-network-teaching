@@ -8,8 +8,8 @@
 |---|---:|---:|---:|---:|
 | 逻辑回归 | 7,850 | 92.41% | 0.993785 | 15,680 |
 | M5 CNN（增强 + EMA） | 1,128,180 | 99.69% | 0.999961 | 274,739,200 |
-| TSSL 结构 CNN | 210,375 | 99.35% | 0.999971 | 2,742,000 |
-| TSSL-BP SNN | 210,375 | 99.27% | 0.998658 | 13,710,000 |
+| TSSL 结构 CNN（增强 + EMA） | 210,375 | 99.58% | 0.999979 | 2,742,000 |
+| TSSL-BP SNN（增强 + EMA） | 210,375 | 99.38% | 0.998782 | 13,710,000 |
 
 以上均为单次实验，以验证集选模、在 10,000 张官方测试图上评估。结构对齐的 CNN 和 TSSL 使用 seed 42、50,000／10,000 的训练／验证划分；其他训练配置有所不同。AUC 使用类别得分的 softmax 值。
 
@@ -43,13 +43,15 @@ uv sync --locked
 uv run --locked python mnist/prepare_data.py
 uv run --locked python mnist/train_logistic.py --epochs 20
 uv run --locked python mnist/train_cnn.py --epochs 150 --augment --ema --tag repro_seed42
-uv run --locked python mnist/train_cnn.py --architecture tssl_cnn --epochs 100 --batch-size 50 --lr 0.0005 --seed 42 --tag aligned_seed42
-uv run --locked python mnist/train_tssl.py --epochs 100 --seed 42 --tag repro_seed42
+uv run --locked python mnist/train_cnn.py --architecture tssl_cnn --epochs 100 --batch-size 50 --lr 0.0005 --seed 42 --augment --ema --tag augment_ema_seed42
+uv run --locked python mnist/train_tssl.py --epochs 100 --seed 42 --augment --ema --tag augment_ema_seed42
 uv run --locked ruff check .
 uv run --locked ruff format --check .
 ```
 
 CNN 和 TSSL 按轮保存检查点；用相同参数加 `--resume` 续训。`--max-batches` 仅用于代码检查。
+
+TSSL 可加 `--ema` 使用权重平均，加 `--augment` 启用训练集旋转和平移；这两个选项不能用于 `--official-protocol`。
 
 官方协议使用 `train_tssl.py --official-protocol --epochs 100 --seed 3 --tag official_seed3`。本实现固定 PyTorch CPU 随机种子、使用 0 个数据加载进程；官方脚本只显式设置 CUDA 和 NumPy 种子、使用 4 个进程。官方配置文件为 200 轮，此处采用论文的 100 轮；核对的源码版本为 `ffaac71d3344172980f048d98b123e40c5420401`。
 
@@ -63,7 +65,7 @@ CNN 和 TSSL 按轮保存检查点；用相同参数加 `--resume` 续训。`--m
 评估已有权重，例如：
 
 ```bash
-uv run --locked python mnist/evaluate.py checkpoint --model tssl_cnn --weights mnist/results/cnn_tssl_cnn_aligned_seed42/best.pt --output evaluation.json
+uv run --locked python mnist/evaluate.py checkpoint --model tssl_cnn --weights mnist/results/cnn_tssl_cnn_augment_ema_seed42/best.pt --output evaluation.json
 ```
 
 `--model` 可选 `logistic`、`m5`、`tssl_cnn`、`tssl`。单独评估不重新选模；数据划分和选模方式以原实验记录为准。历史记录中无法确定的字段标为未知，smoke 结果不进入汇总。
