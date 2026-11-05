@@ -16,10 +16,12 @@ def main():
         return
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "action", choices=["report", "plot", "auc", "tssl", "checkpoint"]
+        "action", choices=["report", "plot", "auc", "tssl", "checkpoint", "complexity"]
     )
     parser.add_argument(
-        "model", nargs="?", help="result directory for auc (e.g. logistic_kair)"
+        "model",
+        nargs="?",
+        help="result directory for auc, or model name for complexity",
     )
     args = parser.parse_args()
     scripts = {
@@ -27,6 +29,7 @@ def main():
         "plot": "plot_results.py",
         "auc": "evaluate_auc.py",
         "tssl": "evaluate_tssl.py",
+        "complexity": "complexity.py",
     }
     if args.action == "auc" and not args.model:
         parser.error("auc requires a result directory")
