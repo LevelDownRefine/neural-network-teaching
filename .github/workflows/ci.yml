@@ -14,8 +14,8 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
-      - run: uv sync --locked --dev
-      - run: uv run --locked ruff check .
-      - run: uv run --locked ruff format --check .
-      - run: uv run --locked pytest -q
-      - run: uv run --locked python mnist/evaluate.py report
+      - run: uv sync --locked --extra cpu --dev
+      - run: uv run --locked --extra cpu ruff check .
+      - run: uv run --locked --extra cpu ruff format --check .
+      - run: uv run --locked --extra cpu pytest -q
+      - run: uv run --locked --extra cpu python mnist/evaluate.py report

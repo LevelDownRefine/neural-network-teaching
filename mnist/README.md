@@ -36,17 +36,17 @@ TSSL 官方协议实验使用全部 60,000 张训练图、按测试集准确率�
 
 ## 安装与训练
 
-需要 Python 3.12 和 [uv](https://docs.astral.sh/uv/)；Windows 使用 CUDA 12.8 PyTorch，Linux 使用 CPU 构建。TSSL 训练需要 CUDA。
+需要 Python 3.12 和 [uv](https://docs.astral.sh/uv/)。以下命令使用 PyTorch 2.15 和 CUDA 13.2；仅使用 CPU 时将 `--extra cuda` 替换为 `--extra cpu`。TSSL 训练需要 CUDA。
 
 ```bash
-uv sync --locked
-uv run --locked python mnist/prepare_data.py
-uv run --locked python mnist/train_logistic.py --epochs 20
-uv run --locked python mnist/train_cnn.py --epochs 150 --augment --ema --tag repro_seed42
-uv run --locked python mnist/train_cnn.py --architecture tssl_cnn --epochs 100 --batch-size 50 --lr 0.0005 --seed 42 --augment --ema --tag augment_ema_seed42
-uv run --locked python mnist/train_tssl.py --epochs 100 --seed 42 --augment --ema --tag augment_ema_seed42
-uv run --locked ruff check .
-uv run --locked ruff format --check .
+uv sync --locked --extra cuda
+uv run --locked --extra cuda python mnist/prepare_data.py
+uv run --locked --extra cuda python mnist/train_logistic.py --epochs 20
+uv run --locked --extra cuda python mnist/train_cnn.py --epochs 150 --augment --ema --tag repro_seed42
+uv run --locked --extra cuda python mnist/train_cnn.py --architecture tssl_cnn --epochs 100 --batch-size 50 --lr 0.0005 --seed 42 --augment --ema --tag augment_ema_seed42
+uv run --locked --extra cuda python mnist/train_tssl.py --epochs 100 --seed 42 --augment --ema --tag augment_ema_seed42
+uv run --locked --extra cuda ruff check .
+uv run --locked --extra cuda ruff format --check .
 ```
 
 CNN 和 TSSL 按轮保存检查点；用相同参数加 `--resume` 续训。`--max-batches` 仅用于代码检查。
@@ -57,15 +57,15 @@ TSSL 可加 `--ema` 使用权重平均，加 `--augment` 启用训练集旋转�
 
 ## 评估
 
-- `uv run --locked python mnist/evaluate.py report`：汇总已完成实验，记录 seed 和选模方式。
-- `uv run --locked python mnist/evaluate.py plot`：绘制混淆矩阵。
-- `uv run --locked python mnist/evaluate.py complexity`：计算现有 28×28 模型各层理论浮点运算次数。
-- `uv run --locked python mnist/evaluate.py auc logistic_kair`：计算旧逻辑回归权重的 AUC。
+- `uv run --locked --extra cuda python mnist/evaluate.py report`：汇总已完成实验，记录 seed 和选模方式。
+- `uv run --locked --extra cuda python mnist/evaluate.py plot`：绘制混淆矩阵。
+- `uv run --locked --extra cuda python mnist/evaluate.py complexity`：计算现有 28×28 模型各层理论浮点运算次数。
+- `uv run --locked --extra cuda python mnist/evaluate.py auc logistic_kair`：计算旧逻辑回归权重的 AUC。
 
 评估已有权重，例如：
 
 ```bash
-uv run --locked python mnist/evaluate.py checkpoint --model tssl_cnn --weights mnist/results/cnn_tssl_cnn_augment_ema_seed42/best.pt --output evaluation.json
+uv run --locked --extra cuda python mnist/evaluate.py checkpoint --model tssl_cnn --weights mnist/results/cnn_tssl_cnn_augment_ema_seed42/best.pt --output evaluation.json
 ```
 
 `--model` 可选 `logistic`、`m5`、`tssl_cnn`、`tssl`。单独评估不重新选模；数据划分和选模方式以原实验记录为准。历史记录中无法确定的字段标为未知，smoke 结果不进入汇总。
@@ -82,12 +82,12 @@ uv run --locked python mnist/evaluate.py checkpoint --model tssl_cnn --weights m
 WSL2 CUDA 环境（需支持 CUDA 的驱动和 C 编译器）：
 
 ```bash
-uv venv --managed-python --python 3.12 .venv-wsl
-uv pip install --python .venv-wsl/bin/python torch==2.15.0 torchvision==0.29.2 PyYAML==6.0.3
-.venv-wsl/bin/python mnist/benchmark.py offline --model tssl --weights mnist/results/tssl_augment_ema_seed42/best.pt --batch-size 512 --engine inductor --seconds 30 --output mnist/results/tssl_augment_ema_seed42/offline_inductor.json
+export UV_PROJECT_ENVIRONMENT=.venv-wsl
+uv sync --locked --extra cuda
+uv run --locked --extra cuda python mnist/benchmark.py offline --model tssl --weights mnist/results/tssl_augment_ema_seed42/best.pt --batch-size 512 --engine inductor --seconds 30 --output mnist/results/tssl_augment_ema_seed42/offline_inductor.json
 ```
 
-该环境与仓库锁定的 Linux CPU 构建独立。`--engine inductor` 使用 `torch.compile(fullgraph=True)`，编译和预热时间单独记录，不计入吞吐量；默认 `eager`。精度使用 FP32 和后端默认设置。
+WSL 使用独立的 `.venv-wsl`，与 Windows 的 `.venv` 分开。`--engine inductor` 使用 `torch.compile(fullgraph=True)`，编译和预热时间单独记录，不计入吞吐量；默认 `eager`。精度使用 FP32 和后端默认设置。
 
 图像预先放在设备上；预热后连续推理，报告吞吐量、PyTorch 峰值分配显存和 GPU 板卡平均功率。计时包含模型调用、GPU 同步和 TSSL 时间步展开，不含数据加载、预处理和传输。`nvidia-smi` 默认约每秒采集功率；平均功率乘运行时间估算板卡能耗，包含 GPU 空闲和其他任务功耗，不含 CPU 等整机用电。少于两次有效采样时不估算功率和能耗。
 
