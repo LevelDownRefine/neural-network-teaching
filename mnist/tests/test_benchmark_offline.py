@@ -5,10 +5,9 @@ import torch
 from utils import benchmark_offline
 
 
-@pytest.mark.parametrize("precision", ["fp32", "bf16"])
 @pytest.mark.parametrize("engine", ["eager", "inductor"])
 def test_offline_benchmark_counts_images_and_handles_no_gpu_power(
-    monkeypatch, capsys, precision, engine
+    monkeypatch, capsys, engine
 ):
     class FakeMNIST:
         def __init__(self, *args, **kwargs):
@@ -22,7 +21,6 @@ def test_offline_benchmark_counts_images_and_handles_no_gpu_power(
 
     clock = iter([9.0, 9.5, 10.0, 10.0, 10.2, 10.4, 10.6])
     batches = []
-    autocast_states = []
     compile_options = []
 
     def fake_compile(predictor, **kwargs):
@@ -33,7 +31,6 @@ def test_offline_benchmark_counts_images_and_handles_no_gpu_power(
 
     def predict(batch):
         batches.append(len(batch))
-        autocast_states.append(torch.is_autocast_enabled("cpu"))
 
     monkeypatch.setattr(benchmark_offline.datasets, "MNIST", FakeMNIST)
     monkeypatch.setattr(benchmark_offline.time, "perf_counter", lambda: next(clock))
@@ -59,8 +56,6 @@ def test_offline_benchmark_counts_images_and_handles_no_gpu_power(
             "1",
             "--seconds",
             "0.4",
-            "--precision",
-            precision,
             "--engine",
             engine,
         ]
@@ -69,20 +64,9 @@ def test_offline_benchmark_counts_images_and_handles_no_gpu_power(
     assert result["throughput"]["images"] == 8
     assert result["throughput"]["images_per_second"] == pytest.approx(8 / 0.6)
     assert batches == [4, 4, 4]
-    assert result["precision"] == precision
     assert result["engine"] == engine
     assert compile_options == (
         [{"backend": "inductor", "fullgraph": True}] if engine == "inductor" else []
     )
-    assert autocast_states == [precision == "bf16"] * 3
     assert result["power"]["mean_board_watts"] is None
     assert result["power"]["estimated_board_joules"] is None
-
-
-def test_bf16_policy_runs_supported_cpu_ops_in_bfloat16():
-    from utils.precision import inference_precision
-
-    x = torch.randn(4, 4)
-    with inference_precision("bf16", torch.device("cpu")):
-        result = x @ x
-    assert result.dtype == torch.bfloat16

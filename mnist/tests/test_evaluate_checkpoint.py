@@ -58,7 +58,9 @@ def test_logistic_checkpoint_evaluation_uses_common_metrics(tmp_path, monkeypatc
 
 
 @pytest.mark.parametrize("engine", ["eager", "inductor"])
-def test_checkpoint_evaluation_uses_bf16_policy(tmp_path, monkeypatch, capsys, engine):
+def test_checkpoint_evaluation_uses_selected_engine(
+    tmp_path, monkeypatch, capsys, engine
+):
     weights = tmp_path / "best.pt"
     torch.save(
         {
@@ -79,8 +81,7 @@ def test_checkpoint_evaluation_uses_bf16_policy(tmp_path, monkeypatch, capsys, e
             return torch.zeros(1, 28, 28), 0
 
     def fake_evaluate(loader, predict):
-        assert torch.is_autocast_enabled("cpu")
-        assert predict(torch.zeros(1, 1, 28, 28)).dtype == torch.bfloat16
+        assert predict(torch.zeros(1, 1, 28, 28)).dtype == torch.float32
         return {"accuracy": 1.0, "macro_auc_ovr": 1.0, "count": 1}
 
     compile_options = []
@@ -103,8 +104,6 @@ def test_checkpoint_evaluation_uses_bf16_policy(tmp_path, monkeypatch, capsys, e
             str(weights),
             "--device",
             "cpu",
-            "--precision",
-            "bf16",
             "--engine",
             engine,
         ],
