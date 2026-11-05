@@ -79,21 +79,28 @@ uv run --locked python mnist/evaluate.py checkpoint --model tssl_cnn --weights m
 
 ## Offline 推理基准
 
+WSL2 CUDA 环境（需支持 CUDA 的驱动和 C 编译器）：
+
 ```bash
-uv run --locked python mnist/benchmark.py offline --model tssl_cnn --weights mnist/results/cnn_tssl_cnn_augment_ema_seed42/best.pt --batch-size 1024 --precision bf16 --seconds 30 --output mnist/results/cnn_tssl_cnn_augment_ema_seed42/offline_bf16.json
-uv run --locked python mnist/benchmark.py offline --model tssl --weights mnist/results/tssl_augment_ema_seed42/best.pt --batch-size 512 --precision bf16 --seconds 30 --output mnist/results/tssl_augment_ema_seed42/offline_bf16.json
-uv run --locked python mnist/evaluate.py checkpoint --model tssl --weights mnist/results/tssl_augment_ema_seed42/best.pt --batch-size 512 --precision bf16 --output evaluation_bf16.json
+uv venv --managed-python --python 3.12 .venv-wsl
+uv pip install --python .venv-wsl/bin/python torch==2.15.0 torchvision==0.29.2 PyYAML==6.0.3
+.venv-wsl/bin/python mnist/benchmark.py offline --model tssl --weights mnist/results/tssl_augment_ema_seed42/best.pt --batch-size 512 --precision bf16 --engine inductor --seconds 30 --output mnist/results/tssl_augment_ema_seed42/offline_bf16.json
+.venv-wsl/bin/python mnist/evaluate.py checkpoint --model tssl --weights mnist/results/tssl_augment_ema_seed42/best.pt --batch-size 512 --precision bf16 --engine inductor --output evaluation_bf16.json
 ```
 
-`--precision bf16` 使用 PyTorch autocast，权重和输入保留 FP32，适用的算子使用 BF16；TSSL 的部分状态计算仍使用 FP32。默认 `fp32` 保持后端默认设置。图像预先放在设备上；预热后连续推理，报告吞吐量、PyTorch 峰值分配显存和 GPU 板卡平均功率。计时包含模型调用、GPU 同步和 TSSL 时间步展开，不含数据加载、预处理和传输。
+该环境与仓库锁定的 Linux CPU 构建独立。`--engine inductor` 使用 `torch.compile(fullgraph=True)`，编译和预热时间单独记录，不计入吞吐量；默认 `eager`。`--precision bf16` 使用 PyTorch autocast，权重和输入保留 FP32，适用的算子使用 BF16；TSSL 的部分状态计算仍使用 FP32。默认 `fp32` 保持后端默认设置。
 
-`nvidia-smi` 默认约每秒采集功率；平均功率乘运行时间估算板卡能耗，包含 GPU 空闲和其他任务功耗，不含 CPU 等整机用电。少于两次有效采样时不估算功率和能耗。
+图像预先放在设备上；预热后连续推理，报告吞吐量、PyTorch 峰值分配显存和 GPU 板卡平均功率。计时包含模型调用、GPU 同步和 TSSL 时间步展开，不含数据加载、预处理和传输。`nvidia-smi` 默认约每秒采集功率；平均功率乘运行时间估算板卡能耗，包含 GPU 空闲和其他任务功耗，不含 CPU 等整机用电。少于两次有效采样时不估算功率和能耗。
 
-以下为 RTX 5070 Ti Laptop GPU、Windows、PyTorch 2.11.0+cu128 的 BF16 autocast 单次实验，吞吐量各测约 30 秒；batch 沿用此前 FP32 扫描中吞吐量最高的档位，不表示 BF16 的最优 batch。准确率和 AUC 使用同一精度重新评估完整测试集，不参与选模。
+以下为 RTX 5070 Ti Laptop GPU、WSL2、PyTorch 2.15.0+cu132 的单次实验，均使用 Inductor 和默认 NCHW 输入；每档吞吐量测约 30 秒，编译和预热时间不计入。每个模型的两种精度使用相同 batch；batch 沿用此前 FP32 扫描中吞吐量最高的档位，不表示 Inductor 或 BF16 的最优 batch。准确率和 AUC 在同一编译及精度配置下重新评估完整测试集，不参与选模。
 
-| 模型 | batch | 吞吐量（图片/秒） | 平均板卡功率（W） | 板卡能耗估算（mJ/图） | 测试准确率 | Macro OvR AUC |
-|---|---:|---:|---:|---:|---:|---:|
-| 逻辑回归 | 2048 | 16,549,874 | 50.1 | 0.0030 | 92.41% | 0.993786 |
-| M5 CNN | 128 | 75,218 | 100.3 | 1.333 | 99.70% | 0.999961 |
-| TSSL 结构 CNN | 1024 | 769,186 | 107.1 | 0.139 | 99.59% | 0.999979 |
-| TSSL-BP SNN | 512 | 15,089 | 101.9 | 6.755 | 99.37% | 0.999372 |
+| 模型 | 精度 | batch | 吞吐量（图片/秒） | 平均板卡功率（W） | 板卡能耗估算（mJ/图） | 测试准确率 | Macro OvR AUC |
+|---|---|---:|---:|---:|---:|---:|---:|
+| 逻辑回归 | FP32 | 2048 | 15,706,175 | 58.4 | 0.00372 | 92.41% | 0.993785 |
+| 逻辑回归 | BF16 | 2048 | 15,479,318 | 45.3 | 0.00293 | 92.41% | 0.993786 |
+| M5 CNN | FP32 | 128 | 51,530 | 108.6 | 2.107 | 99.69% | 0.999961 |
+| M5 CNN | BF16 | 128 | 101,629 | 103.3 | 1.016 | 99.69% | 0.999961 |
+| TSSL 结构 CNN | FP32 | 1024 | 1,328,729 | 104.6 | 0.0787 | 99.58% | 0.999979 |
+| TSSL 结构 CNN | BF16 | 1024 | 972,747 | 100.2 | 0.103 | 99.58% | 0.999979 |
+| TSSL-BP SNN | FP32 | 512 | 84,937 | 110.3 | 1.298 | 99.38% | 0.998782 |
+| TSSL-BP SNN | BF16 | 512 | 141,946 | 110.8 | 0.781 | 99.37% | 0.999372 |

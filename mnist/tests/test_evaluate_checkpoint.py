@@ -2,6 +2,7 @@ import json
 import sys
 
 import evaluate
+import pytest
 import torch
 from torch import nn
 from utils import evaluate_checkpoint
@@ -56,7 +57,8 @@ def test_logistic_checkpoint_evaluation_uses_common_metrics(tmp_path, monkeypatc
     assert result["test"]["macro_auc_ovr"] == 0.5
 
 
-def test_checkpoint_evaluation_uses_bf16_policy(tmp_path, monkeypatch, capsys):
+@pytest.mark.parametrize("engine", ["eager", "inductor"])
+def test_checkpoint_evaluation_uses_bf16_policy(tmp_path, monkeypatch, capsys, engine):
     weights = tmp_path / "best.pt"
     torch.save(
         {
@@ -81,6 +83,13 @@ def test_checkpoint_evaluation_uses_bf16_policy(tmp_path, monkeypatch, capsys):
         assert predict(torch.zeros(1, 1, 28, 28)).dtype == torch.bfloat16
         return {"accuracy": 1.0, "macro_auc_ovr": 1.0, "count": 1}
 
+    compile_options = []
+
+    def fake_compile(predictor, **kwargs):
+        compile_options.append(kwargs)
+        return predictor
+
+    monkeypatch.setattr(torch, "compile", fake_compile)
     monkeypatch.setattr(evaluate_checkpoint.datasets, "MNIST", FakeMNIST)
     monkeypatch.setattr(evaluate_checkpoint, "evaluate_batches", fake_evaluate)
     monkeypatch.setattr(
@@ -96,7 +105,12 @@ def test_checkpoint_evaluation_uses_bf16_policy(tmp_path, monkeypatch, capsys):
             "cpu",
             "--precision",
             "bf16",
+            "--engine",
+            engine,
         ],
     )
     evaluate_checkpoint.main()
     assert json.loads(capsys.readouterr().out)["accuracy"] == 1.0
+    assert compile_options == (
+        [{"backend": "inductor", "fullgraph": True}] if engine == "inductor" else []
+    )

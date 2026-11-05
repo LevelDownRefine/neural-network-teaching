@@ -6,8 +6,9 @@ from utils import benchmark_offline
 
 
 @pytest.mark.parametrize("precision", ["fp32", "bf16"])
+@pytest.mark.parametrize("engine", ["eager", "inductor"])
 def test_offline_benchmark_counts_images_and_handles_no_gpu_power(
-    monkeypatch, capsys, precision
+    monkeypatch, capsys, precision, engine
 ):
     class FakeMNIST:
         def __init__(self, *args, **kwargs):
@@ -19,9 +20,16 @@ def test_offline_benchmark_counts_images_and_handles_no_gpu_power(
         def __getitem__(self, index):
             return torch.zeros(1, 28, 28), index
 
-    clock = iter([10.0, 10.0, 10.2, 10.4, 10.6])
+    clock = iter([9.0, 9.5, 10.0, 10.0, 10.2, 10.4, 10.6])
     batches = []
     autocast_states = []
+    compile_options = []
+
+    def fake_compile(predictor, **kwargs):
+        compile_options.append(kwargs)
+        return predictor
+
+    monkeypatch.setattr(torch, "compile", fake_compile)
 
     def predict(batch):
         batches.append(len(batch))
@@ -53,6 +61,8 @@ def test_offline_benchmark_counts_images_and_handles_no_gpu_power(
             "0.4",
             "--precision",
             precision,
+            "--engine",
+            engine,
         ]
     )
     result = json.loads(capsys.readouterr().out)
@@ -60,6 +70,10 @@ def test_offline_benchmark_counts_images_and_handles_no_gpu_power(
     assert result["throughput"]["images_per_second"] == pytest.approx(8 / 0.6)
     assert batches == [4, 4, 4]
     assert result["precision"] == precision
+    assert result["engine"] == engine
+    assert compile_options == (
+        [{"backend": "inductor", "fullgraph": True}] if engine == "inductor" else []
+    )
     assert autocast_states == [precision == "bf16"] * 3
     assert result["power"]["mean_board_watts"] is None
     assert result["power"]["estimated_board_joules"] is None
