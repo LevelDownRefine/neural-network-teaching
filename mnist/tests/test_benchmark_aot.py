@@ -3,7 +3,7 @@ import json
 
 import pytest
 import torch
-from utils import benchmark_offline
+from utils import benchmark_common, benchmark_power
 
 
 class TinyDataset:
@@ -28,10 +28,8 @@ def test_compiled_artifact_and_manual_start(tmp_path, monkeypatch):
         return batch
 
     predict.aot_external_data = {"model": object()}
-    monkeypatch.setattr(benchmark_offline.datasets, "MNIST", TinyDataset)
-    monkeypatch.setattr(
-        benchmark_offline, "load_predictor", lambda *args: (predict, {})
-    )
+    monkeypatch.setattr(benchmark_common.datasets, "MNIST", TinyDataset)
+    monkeypatch.setattr(benchmark_common, "load_predictor", lambda *args: (predict, {}))
 
     class Compiled:
         def aot_compile(self, inputs):
@@ -57,7 +55,7 @@ def test_compiled_artifact_and_manual_start(tmp_path, monkeypatch):
         "--engine",
         "inductor",
     ]
-    benchmark_offline.main(base + ["--save-compiled", str(artifact)])
+    benchmark_power.main(base + ["--save-compiled", str(artifact)])
     assert json.loads((artifact / "metadata.json").read_text())["batch_size"] == 1
 
     def load(file, external_data):
@@ -68,14 +66,13 @@ def test_compiled_artifact_and_manual_start(tmp_path, monkeypatch):
     monkeypatch.setattr(torch.compiler, "load_compiled_function", load)
     monkeypatch.setattr(builtins, "input", lambda prompt: events.append("input"))
     output = tmp_path / "result.json"
-    benchmark_offline.main(
+    benchmark_power.main(
         base
         + [
             "--load-compiled",
             str(artifact),
             "--warmup",
             "1",
-            "--wait-for-start",
             "--seconds",
             "0.001",
             "--output",
@@ -87,4 +84,4 @@ def test_compiled_artifact_and_manual_start(tmp_path, monkeypatch):
     assert json.loads(output.read_text())["compiled_artifact"] == str(artifact)
     weights.write_bytes(b"different")
     with pytest.raises(ValueError, match="metadata"):
-        benchmark_offline.main(base + ["--load-compiled", str(artifact)])
+        benchmark_power.main(base + ["--load-compiled", str(artifact)])

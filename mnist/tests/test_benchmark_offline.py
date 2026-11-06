@@ -2,7 +2,7 @@ import json
 
 import pytest
 import torch
-from utils import benchmark_offline
+from utils import benchmark_common, benchmark_offline
 
 
 @pytest.mark.parametrize("engine", ["eager", "inductor"])
@@ -32,10 +32,10 @@ def test_offline_benchmark_counts_images_and_handles_no_gpu_power(
     def predict(batch):
         batches.append(len(batch))
 
-    monkeypatch.setattr(benchmark_offline.datasets, "MNIST", FakeMNIST)
-    monkeypatch.setattr(benchmark_offline.time, "perf_counter", lambda: next(clock))
+    monkeypatch.setattr(benchmark_common.datasets, "MNIST", FakeMNIST)
+    monkeypatch.setattr(benchmark_common.time, "perf_counter", lambda: next(clock))
     monkeypatch.setattr(
-        benchmark_offline,
+        benchmark_common,
         "load_predictor",
         lambda model, weights, device: (
             predict,
