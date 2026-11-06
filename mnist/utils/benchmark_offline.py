@@ -1,6 +1,7 @@
 """Benchmark offline MNIST throughput and GPU board power."""
 
 import argparse
+import hashlib
 import json
 import math
 import statistics
@@ -56,10 +57,20 @@ def main(argv=None):
     p.add_argument("--batch-size", type=positive_int, default=512)
     p.add_argument("--engine", choices=("eager", "inductor"), default="eager")
     p.add_argument("--warmup", type=positive_int, default=20)
+    p.add_argument(
+        "--wait-for-start",
+        action="store_true",
+        help="wait for Enter after warmup before measuring",
+    )
     p.add_argument("--seconds", type=float, default=60.0)
     p.add_argument("--power-interval", type=float, default=1.0)
     p.add_argument("--output", type=Path)
+    artifacts = p.add_mutually_exclusive_group()
+    artifacts.add_argument("--save-compiled", type=Path)
+    artifacts.add_argument("--load-compiled", type=Path)
     args = p.parse_args(argv)
+    if (args.save_compiled or args.load_compiled) and args.engine != "inductor":
+        p.error("compiled artifacts require --engine inductor")
     if not all(math.isfinite(x) and x > 0 for x in (args.seconds, args.power_interval)):
         p.error("--seconds and --power-interval must be positive")
     device = torch.device(
@@ -85,15 +96,54 @@ def main(argv=None):
         if device.type == "cuda"
         else None
     )
+    if args.save_compiled or args.load_compiled:
+        metadata = {
+            "model": args.model,
+            "weights_sha256": hashlib.sha256(args.weights.read_bytes()).hexdigest(),
+            "batch_size": args.batch_size,
+            "torch": torch.__version__,
+            "device": str(device),
+            "gpu": torch.cuda.get_device_name(device)
+            if device.type == "cuda"
+            else None,
+        }
+    if args.save_compiled:
+        args.save_compiled.mkdir(parents=True, exist_ok=False)
+        with torch.inference_mode():
+            compiled = torch.compile(
+                predict, backend="inductor", fullgraph=True
+            ).aot_compile(((batch,), {}))
+            compiled.save_compiled_function(
+                str(args.save_compiled / "compiled.pt"),
+                external_data=predict.aot_external_data,
+            )
+        atomic_write_json(args.save_compiled / "metadata.json", metadata)
+        print(json.dumps(metadata, indent=2))
+        return
     samples = []
     stop = threading.Event()
     with torch.inference_mode():
         setup_start = time.perf_counter()
-        predict = inference_engine(predict, args.engine)
+        if args.load_compiled:
+            saved_metadata = json.loads(
+                (args.load_compiled / "metadata.json").read_text(encoding="utf-8")
+            )
+            if saved_metadata != metadata:
+                raise ValueError(
+                    "compiled artifact metadata does not match model, weights, batch or environment"
+                )
+            with (args.load_compiled / "compiled.pt").open("rb") as f:
+                predict = torch.compiler.load_compiled_function(
+                    f, external_data=predict.aot_external_data
+                )
+        else:
+            predict = inference_engine(predict, args.engine)
         for _ in range(args.warmup):
             predict(batch)
         synchronize(device)
         setup_seconds = time.perf_counter() - setup_start
+        if args.wait_for_start:
+            input("预热完成，请连接测试电源，然后按回车开始测量：")
         sampler = None
         if device.type == "cuda":
             sampler = threading.Thread(
@@ -122,6 +172,7 @@ def main(argv=None):
         "mode": "offline",
         "engine": args.engine,
         "fullgraph": args.engine == "inductor",
+        "compiled_artifact": str(args.load_compiled) if args.load_compiled else None,
         "warmup_and_compile_seconds": setup_seconds,
         "model": args.model,
         "weights": str(args.weights),

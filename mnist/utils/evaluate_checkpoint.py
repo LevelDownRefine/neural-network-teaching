@@ -61,6 +61,9 @@ def load_predictor(model_name, weights, device):
         def predict(images):
             return model(images.to(device))
 
+    predict.aot_external_data = (
+        {"nc": nc, "net": net} if model_name == "tssl" else {"model": model}
+    )
     return predict, checkpoint
 
 
