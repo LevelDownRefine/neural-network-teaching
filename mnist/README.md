@@ -87,6 +87,15 @@ uv sync --locked --extra cuda
 uv run --locked --extra cuda python mnist/benchmark.py offline --model tssl --weights mnist/results/tssl_augment_ema_seed42/best.pt --batch-size 512 --engine inductor --seconds 30 --output mnist/results/tssl_augment_ema_seed42/offline_inductor.json
 ```
 
+提前保存编译产物，之后加载并在连接好测试电源后按回车开始测量：
+
+```bash
+uv run --locked --extra cuda python mnist/benchmark.py power --model tssl --weights mnist/results/tssl_augment_ema_seed42/best.pt --batch-size 512 --engine inductor --save-compiled mnist/results/tssl_aot
+uv run --locked --extra cuda python mnist/benchmark.py power --model tssl --weights mnist/results/tssl_augment_ema_seed42/best.pt --batch-size 512 --engine inductor --load-compiled mnist/results/tssl_aot --seconds 60
+```
+
+产物依赖模型代码和环境；更换代码或环境后应重新生成。保存与加载时模型、权重、batch、PyTorch 和设备需一致。等待期间不采集功率或计时；外接电表按回车时同步开始记录。`power` 也可直接使用 eager 或普通 Inductor，无须保存产物。
+
 WSL 使用独立的 `.venv-wsl`，与 Windows 的 `.venv` 分开。`--engine inductor` 使用 `torch.compile(fullgraph=True)`，编译和预热时间单独记录，不计入吞吐量；默认 `eager`。精度使用 FP32 和后端默认设置。
 
 图像预先放在设备上；预热后连续推理，报告吞吐量、PyTorch 峰值分配显存和 GPU 板卡平均功率。计时包含模型调用、GPU 同步和 TSSL 时间步展开，不含数据加载、预处理和传输。`nvidia-smi` 默认约每秒采集功率；平均功率乘运行时间估算板卡能耗，包含 GPU 空闲和其他任务功耗，不含 CPU 等整机用电。少于两次有效采样时不估算功率和能耗。
