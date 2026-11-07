@@ -81,7 +81,10 @@ def test_compiled_artifact_and_manual_start(tmp_path, monkeypatch):
     )
     assert events[:2] == ["predict", "input"]
     assert len(events) > 2
-    assert json.loads(output.read_text())["compiled_artifact"] == str(artifact)
+    result = json.loads(output.read_text())
+    assert result["compiled_artifact"] == str(artifact)
+    assert result["throughput"]["seconds"] >= 0.001
+    assert result["throughput"]["images"] > 0
     weights.write_bytes(b"different")
     with pytest.raises(ValueError, match="metadata"):
         benchmark_power.main(base + ["--load-compiled", str(artifact)])

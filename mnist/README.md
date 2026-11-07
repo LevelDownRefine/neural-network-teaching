@@ -94,7 +94,7 @@ uv run --locked --extra cuda python mnist/benchmark.py power --model tssl --weig
 uv run --locked --extra cuda python mnist/benchmark.py power --model tssl --weights mnist/results/tssl_augment_ema_seed42/best.pt --batch-size 512 --engine inductor --load-compiled mnist/results/tssl_aot --seconds 60
 ```
 
-产物依赖模型代码和环境；更换代码或环境后应重新生成。保存与加载时模型、权重、batch、PyTorch 和设备需一致。等待期间不采集功率或计时；外接电表按回车时同步开始记录。`power` 也可直接使用 eager 或普通 Inductor，无须保存产物。
+产物依赖模型代码和环境；更换代码或环境后应重新生成。保存与加载时模型、权重、batch、PyTorch 和设备需一致。等待期间不采集功率或计时；外接电表按回车时同步开始记录。结果中 `throughput.seconds` 为回车后推理测量的实际用时，`throughput.images` 为处理图片数；实际用时可能略长于 `--seconds`，因为会等待当前 batch 完成。`power` 也可直接使用 eager 或普通 Inductor，无须保存产物。
 
 WSL 使用独立的 `.venv-wsl`，与 Windows 的 `.venv` 分开。`--engine inductor` 使用 `torch.compile(fullgraph=True)`，编译和预热时间单独记录，不计入吞吐量；默认 `eager`。精度使用 FP32 和后端默认设置。
 
