@@ -1,0 +1,62 @@
+[
+  {
+    "model": "tssl_cnn",
+    "batch_size": 1,
+    "samples": 1000,
+    "p90_ms": 0.336949,
+    "p99_ms": 0.861435,
+    "torch": "2.15.0+cu132",
+    "engine": "inductor",
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU"
+  },
+  {
+    "model": "tssl_cnn",
+    "batch_size": 8,
+    "samples": 1000,
+    "p90_ms": 0.331683,
+    "p99_ms": 0.854176,
+    "torch": "2.15.0+cu132",
+    "engine": "inductor",
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU"
+  },
+  {
+    "model": "tssl_cnn",
+    "batch_size": 32,
+    "samples": 1000,
+    "p90_ms": 0.445604,
+    "p99_ms": 0.955073,
+    "torch": "2.15.0+cu132",
+    "engine": "inductor",
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU"
+  },
+  {
+    "model": "tssl",
+    "batch_size": 1,
+    "samples": 1000,
+    "p90_ms": 0.567775,
+    "p99_ms": 1.380165,
+    "torch": "2.15.0+cu132",
+    "engine": "inductor",
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU"
+  },
+  {
+    "model": "tssl",
+    "batch_size": 8,
+    "samples": 1000,
+    "p90_ms": 0.722769,
+    "p99_ms": 2.307267,
+    "torch": "2.15.0+cu132",
+    "engine": "inductor",
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU"
+  },
+  {
+    "model": "tssl",
+    "batch_size": 32,
+    "samples": 1000,
+    "p90_ms": 1.372339,
+    "p99_ms": 2.603089,
+    "torch": "2.15.0+cu132",
+    "engine": "inductor",
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU"
+  }
+]
