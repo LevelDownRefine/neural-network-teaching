@@ -122,3 +122,19 @@ WSL 使用独立的 `.venv-wsl`，与 Windows 的 `.venv` 分开。`--engine ind
 单位图片整机耗电比（SNN ∶ CNN）约为 18 ∶ 1。
 
 单位图片耗电等于整机电表耗电除以累计推理图片数，包含空闲及其他任务的耗电。电表精度相对单次读数较粗，结果为近似值；不同 batch、测试日期和运行状态也会影响比较。电表读数与 GPU 板卡功率为不同测量范围。完整采样和原始计数见 [CNN](results/power/tssl_cnn_15min.json) 和 [SNN](results/power/tssl_snn_15min.json)。
+
+
+## 模型推理延时
+
+RTX 5070 Ti Laptop GPU、WSL2、PyTorch 2.15.0+cu132，FP32 Inductor；输入为预先放在 GPU 上的随机张量。每次测量为单个 batch 的模型调用至 GPU 同步完成，不含编译、数据传输及服务端排队。batch 1、8、32 各预热 50 次后测量 1,000 次，分别取各 batch 的 P90、P99 最小值；每档仅测一轮。
+
+| 模型 | 最小 P90（ms，batch） | 最小 P99（ms，batch） |
+|---|---:|---:|
+| TSSL 结构 CNN | 0.332（8） | 0.854（8） |
+| TSSL-BP SNN | 0.568（1） | 1.380（1） |
+
+[各 batch 测量结果](results/latency/model_p90_p99_2026-11-07.json)。最小值对应的 batch 可不同；单轮结果会受系统负载影响。
+
+```bash
+uv run --locked --extra cuda python mnist/benchmark.py latency --model tssl --weights mnist/results/tssl_augment_ema_seed42/best.pt --batch-size 1 --engine inductor --output latency.json
+```
