@@ -34,6 +34,16 @@ TSSL 官方协议实验使用全部 60,000 张训练图、按测试集准确率�
 
 [混淆矩阵和逐类指标](RESULTS.md)列出了上表各模型的完整结果。较新的权重和原始结果保存在本机 `results/`，不纳入 Git。
 
+
+### snnTorch 前向对照
+
+用 snnTorch 1.0.0 的 LIF 神经元和原突触滤波加载 TSSL-BP 增强 + EMA 权重；在 10,000 张测试图上与原实现逐批对照，输出得分逐项一致，准确率 99.38%、Macro OvR AUC 0.998782。该实验使用原训练权重和网络结构，不代表 snnTorch 默认代理梯度能复现 TSSL-BP 训练；[详细指标](results/snntorch_tssl/metrics.json)。
+
+```bash
+uv sync --locked --extra cuda --group snntorch
+uv run --locked --extra cuda --group snntorch python mnist/evaluate.py checkpoint --model tssl --neuron snntorch --weights mnist/results/tssl_augment_ema_seed42/best.pt --output snntorch_evaluation.json
+```
+
 ## 安装与训练
 
 需要 Python 3.12 和 [uv](https://docs.astral.sh/uv/)。以下命令使用 PyTorch 2.15 和 CUDA 13.2；仅使用 CPU 时将 `--extra cuda` 替换为 `--extra cpu`。TSSL 训练需要 CUDA。
