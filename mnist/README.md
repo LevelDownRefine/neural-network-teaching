@@ -110,40 +110,40 @@ WSL 使用独立的 `.venv-wsl`，与 Windows 的 `.venv` 分开。`--engine ind
 
 图像预先放在设备上；预热后连续推理，报告吞吐量、PyTorch 峰值分配显存和 GPU 板卡平均功率。计时包含模型调用、GPU 同步和 TSSL 时间步展开，不含数据加载、预处理和传输。`nvidia-smi` 默认约每秒采集功率；平均功率乘运行时间估算板卡能耗，包含 GPU 空闲和其他任务功耗，不含 CPU 等整机用电。少于两次有效采样时不估算功率和能耗。
 
-以下为 RTX 5070 Ti Laptop GPU 的单次 FP32 实验，使用默认 NCHW 输入；每档吞吐量测约 30 秒，编译和预热时间不计入。逻辑回归使用 Windows、PyTorch 2.11.0+cu128 和 eager；其余模型使用 WSL2、PyTorch 2.15.0+cu132 和 Inductor。运行环境不同，结果需谨慎比较。batch 沿用此前 FP32 扫描中吞吐量最高的档位，不表示 Inductor 的最优 batch。
+以下为 RTX 5070 Ti Laptop GPU 的单次 FP32 实验，使用默认 NCHW 输入；每档吞吐量测约 30 秒，编译和预热时间不计入。逻辑回归使用 Windows、PyTorch 2.11.0+cu128 和 eager；其余模型使用 WSL2、PyTorch 2.15.0+cu132 和 Inductor；SNN 数值于 2026-11-12 在 snnTorch 前向下重测。运行环境不同，结果需谨慎比较。batch 沿用此前 FP32 扫描中吞吐量最高的档位，不表示 Inductor 的最优 batch。
 
 | 模型 | 执行方式 | batch | 吞吐量（图片/秒） | 平均板卡功率（W） | 板卡能耗估算（mJ/图） |
 |---|---|---:|---:|---:|---:|
 | 逻辑回归 | eager | 2048 | 22,289,579 | 63.8 | 0.00286 |
 | M5 CNN | Inductor | 128 | 51,530 | 108.6 | 2.107 |
 | TSSL 结构 CNN | Inductor | 1024 | 1,328,729 | 104.6 | 0.0787 |
-| TSSL-BP SNN | Inductor | 512 | 84,937 | 110.3 | 1.298 |
+| snnTorch SNN | Inductor | 512 | 60,752 | 110.5 | 1.818 |
 
 
 ### 整机耗电测试
 
-两次实验分别于 2026-11-06 和 2026-11-07 进行，使用上述增强 + EMA 权重，在 RTX 5070 Ti Laptop GPU、WSL2、PyTorch 2.15.0+cu132 上以 FP32 Inductor 运行。编译产物加载、预热后等待接入电表；计时 15 分钟，重复推理已放在 GPU 上的同一批 MNIST 测试图片，不含数据加载和传输。电表测量整机耗电，数值由使用者记录，仪器标称精度为 0.02 度。
+以下是旧 TSSL-BP 前向实现的历史电表数据，snnTorch 版本未重测整机耗电。两次实验分别于 2026-11-06 和 2026-11-07 进行，使用上述增强 + EMA 权重，在 RTX 5070 Ti Laptop GPU、WSL2、PyTorch 2.15.0+cu132 上以 FP32 Inductor 运行。编译产物加载、预热后等待接入电表；计时 15 分钟，重复推理已放在 GPU 上的同一批 MNIST 测试图片，不含数据加载和传输。电表测量整机耗电，数值由使用者记录，仪器标称精度为 0.02 度。
 
 | 模型 | batch | 实际用时（秒） | 累计图片数 | 吞吐量（图片/秒） | 电表耗电（度） | 每百万张耗电（度） | GPU 平均板卡功率（W） |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | TSSL 结构 CNN | 1024 | 900.000 | 1,218,428,928 | 1,353,810 | 0.05 | 0.0000410 | 124.2 |
 | TSSL-BP SNN | 512 | 900.001 | 67,577,856 | 75,086 | 0.05 | 0.000740 | 121.9 |
 
-单位图片整机耗电比（SNN ∶ CNN）约为 18 ∶ 1。
+旧实现的单位图片整机耗电比（SNN ∶ CNN）约为 18 ∶ 1。
 
 单位图片耗电等于整机电表耗电除以累计推理图片数，包含空闲及其他任务的耗电。电表精度相对单次读数较粗，结果为近似值；不同 batch、测试日期和运行状态也会影响比较。电表读数与 GPU 板卡功率为不同测量范围。完整采样和原始计数见 [CNN](results/power/tssl_cnn_15min.json) 和 [SNN](results/power/tssl_snn_15min.json)。
 
 
 ## 模型推理延时
 
-RTX 5070 Ti Laptop GPU、WSL2、PyTorch 2.15.0+cu132，FP32 Inductor；输入为预先放在 GPU 上的随机张量。每次测量为单个 batch 的模型调用至 GPU 同步完成，不含编译、数据传输及服务端排队。batch 1、8、32 各预热 50 次后测量 1,000 次，分别取各 batch 的 P90、P99 最小值；每档仅测一轮。
+RTX 5070 Ti Laptop GPU、WSL2、PyTorch 2.15.0+cu132，FP32 Inductor；输入为预先放在 GPU 上的随机张量。每次测量为单个 batch 的模型调用至 GPU 同步完成，不含编译、数据传输及服务端排队。batch 1、8、32 各预热 50 次后测量 1,000 次，分别取各 batch 的 P90、P99 最小值；每档仅测一轮。CNN 测于 2026-11-07，snnTorch SNN 测于 2026-11-12。
 
 | 模型 | 最小 P90（ms，batch） | 最小 P99（ms，batch） |
 |---|---:|---:|
 | TSSL 结构 CNN | 0.332（8） | 0.854（8） |
-| TSSL-BP SNN | 0.568（1） | 1.380（1） |
+| snnTorch SNN | 0.632（8） | 0.926（1） |
 
-[各 batch 测量结果](results/latency/model_p90_p99_2026-11-07.json)。最小值对应的 batch 可不同；单轮结果会受系统负载影响。
+[各 batch 测量结果](results/latency/model_p90_p99.json)。最小值对应的 batch 可不同；单轮结果会受系统负载影响。
 
 ```bash
 uv run --locked --extra cuda python mnist/benchmark.py latency --model tssl --weights mnist/results/tssl_augment_ema_seed42/best.pt --batch-size 1 --engine inductor --output latency.json

@@ -1,0 +1,80 @@
+[
+  {
+    "model": "tssl_cnn",
+    "batch_size": 1,
+    "samples": 1000,
+    "p90_ms": 0.336949,
+    "p99_ms": 0.861435,
+    "torch": "2.15.0+cu132",
+    "engine": "inductor",
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU"
+  },
+  {
+    "model": "tssl_cnn",
+    "batch_size": 8,
+    "samples": 1000,
+    "p90_ms": 0.331683,
+    "p99_ms": 0.854176,
+    "torch": "2.15.0+cu132",
+    "engine": "inductor",
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU"
+  },
+  {
+    "model": "tssl_cnn",
+    "batch_size": 32,
+    "samples": 1000,
+    "p90_ms": 0.445604,
+    "p99_ms": 0.955073,
+    "torch": "2.15.0+cu132",
+    "engine": "inductor",
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU"
+  },
+  {
+    "model": "tssl",
+    "weights": "tssl_augment_ema_seed42/best.pt",
+    "best_epoch": 98,
+    "batch_size": 1,
+    "engine": "inductor",
+    "warmup": 50,
+    "samples": 1000,
+    "p90_ms": 0.649551,
+    "p99_ms": 0.926164,
+    "torch": "2.15.0+cu132",
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "timing": "host wall time through CUDA synchronization; random inputs preloaded on GPU",
+    "implementation": "snntorch",
+    "measurement_date": "2026-11-12"
+  },
+  {
+    "model": "tssl",
+    "weights": "tssl_augment_ema_seed42/best.pt",
+    "best_epoch": 98,
+    "batch_size": 8,
+    "engine": "inductor",
+    "warmup": 50,
+    "samples": 1000,
+    "p90_ms": 0.632172,
+    "p99_ms": 1.058581,
+    "torch": "2.15.0+cu132",
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "timing": "host wall time through CUDA synchronization; random inputs preloaded on GPU",
+    "implementation": "snntorch",
+    "measurement_date": "2026-11-12"
+  },
+  {
+    "model": "tssl",
+    "weights": "tssl_augment_ema_seed42/best.pt",
+    "best_epoch": 98,
+    "batch_size": 32,
+    "engine": "inductor",
+    "warmup": 50,
+    "samples": 1000,
+    "p90_ms": 0.949907,
+    "p99_ms": 4.703214,
+    "torch": "2.15.0+cu132",
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "timing": "host wall time through CUDA synchronization; random inputs preloaded on GPU",
+    "implementation": "snntorch",
+    "measurement_date": "2026-11-12"
+  }
+]
