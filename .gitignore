@@ -23,3 +23,6 @@ mnist/results/tssl_ablation_status.json
 mnist/results/*.log
 mnist/results/*_pid.txt
 mnist/results/reproduction_status.json
+
+mnist/results/snntorch/
+mnist/results/snntorch_*/

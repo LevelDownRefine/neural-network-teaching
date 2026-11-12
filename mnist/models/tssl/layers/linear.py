@@ -4,8 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as f
 import torch.nn.init as init
-import functions.tsslbp as tsslbp
-import global_v as glv
+from utils.snntorch_tssl import create_neuron, lif_filter
 
 
 class LinearLayer(nn.Linear):
@@ -37,6 +36,7 @@ class LinearLayer(nn.Linear):
             raise Exception('outFeatures should not be more than 1 dimesnion. It was: {}'.format(out_features.shape))
 
         super(LinearLayer, self).__init__(n_inputs, n_outputs, bias=False)
+        object.__setattr__(self, "_snn_neuron", create_neuron(network_config, config).cuda())
 
         nn.init.kaiming_normal_(self.weight)
         self.weight = torch.nn.Parameter(weight_scale * self.weight.cuda(), requires_grad=True)
@@ -60,7 +60,7 @@ class LinearLayer(nn.Linear):
 
     def forward_pass(self, x, epoch):
         y = self.forward(x)
-        y = tsslbp.TSSLBP.apply(y, self.network_config, self.layer_config)
+        y = lif_filter(y, self.network_config, self.layer_config, self._snn_neuron)
         return y
 
     def get_parameters(self):

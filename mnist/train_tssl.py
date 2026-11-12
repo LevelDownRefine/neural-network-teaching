@@ -1,4 +1,4 @@
-"""Run original TSSL network/loss with isolated validation and a held-out test set."""
+"""Train the TSSL-architecture SNN using snnTorch surrogate gradients."""
 
 import argparse
 import json
@@ -13,7 +13,6 @@ sys.path.insert(0, str(SRC))
 import numpy as np
 import torch
 import yaml
-from torchvision import datasets, transforms
 from data_pipeline.mnist import mnist_loaders
 from utils.checkpoints import prepare_output, save_training, restore_best, cpu_snapshot
 from utils.cli import positive_int
@@ -21,9 +20,7 @@ from utils.ema import ParameterEMA
 from utils.experiment import run_epochs
 from utils.evaluation import evaluate_batches
 from utils.io import atomic_write_json
-from torch.utils.data import DataLoader
 import cnns
-import global_v as glv
 import functions.loss_f as loss_f
 
 
@@ -35,22 +32,15 @@ def main():
     p.add_argument("--hidden-size", type=int, default=300)
     p.add_argument("--augment", action="store_true")
     p.add_argument("--ema", action="store_true")
-    p.add_argument(
-        "--official-protocol",
-        action="store_true",
-        help="60k training images and test-set checkpoint selection, as in official code",
-    )
     p.add_argument("--max-batches", type=int, default=0, help="smoke test only")
     p.add_argument(
         "--cpu-smoke",
         action="store_true",
-        help="test original CUDA-hardcoded code on CPU; not a reproduction run",
+        help="run a small CPU smoke test",
     )
     p.add_argument("--tag", default="")
     p.add_argument("--resume", action="store_true")
     a = p.parse_args()
-    if a.official_protocol and (a.augment or a.ema):
-        p.error("--augment and --ema are not part of the official protocol")
     if (a.augment or a.ema) and not a.tag:
         p.error("use --tag for modified experiments")
     if a.cpu_smoke:
@@ -70,31 +60,12 @@ def main():
     nc["batch_size"] = a.batch_size
     cfg["Layers"]["FC_1"]["n_outputs"] = a.hidden_size
     cfg["Layers"]["output"]["n_inputs"] = a.hidden_size
-    glv.init(nc["n_steps"], nc["tau_s"])
-    if a.official_protocol:
-        transform = transforms.Compose(
-            [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
-        )
-        trainset = datasets.MNIST(
-            ROOT / "data", train=True, download=False, transform=transform
-        )
-        testset = datasets.MNIST(
-            ROOT / "data", train=False, download=False, transform=transform
-        )
-        trainloader = DataLoader(
-            trainset, batch_size=a.batch_size, shuffle=True, num_workers=0
-        )
-        testloader = DataLoader(
-            testset, batch_size=a.batch_size, shuffle=False, num_workers=0
-        )
-        loaders = (trainloader, testloader, testloader)
-    else:
-        loaders = mnist_loaders(
-            a.batch_size,
-            a.seed,
-            normalization=((0.1307,), (0.3081,)),
-            augmentation=a.augment,
-        )
+    loaders = mnist_loaders(
+        a.batch_size,
+        a.seed,
+        normalization=((0.1307,), (0.3081,)),
+        augmentation=a.augment,
+    )
     net = cnns.Network(nc, cfg["Layers"], [1, 28, 28]).cuda()
     err = loss_f.SpikeLoss(nc).cuda()
     opt = torch.optim.AdamW(net.get_parameters(), lr=nc["lr"], betas=(0.9, 0.999))
@@ -106,12 +77,13 @@ def main():
         raise ValueError("invalid tag")
     if a.hidden_size != 300 and not a.tag:
         raise ValueError("use --tag to preserve previous results")
-    if a.official_protocol and not a.tag:
-        raise ValueError("use --tag for official protocol")
     out = (
         ROOT
         / "results"
-        / (("tssl_smoke" if a.max_batches else "tssl") + ("_" + a.tag if a.tag else ""))
+        / (
+            ("snntorch_smoke" if a.max_batches else "snntorch")
+            + ("_" + a.tag if a.tag else "")
+        )
     )
     prepare_output(out, a.resume)
 
@@ -163,8 +135,6 @@ def main():
         state = torch.load(out / "latest.pt", map_location="cpu", weights_only=False)
         if state["config"].get("hidden_size", 300) != a.hidden_size:
             raise ValueError("resume configuration differs: hidden_size")
-        if state["config"].get("official_protocol", False) != a.official_protocol:
-            raise ValueError("resume protocol differs")
         for key in ("augment", "ema"):
             if state["config"].get(key, False) != getattr(a, key):
                 raise ValueError("resume configuration differs: " + key)
@@ -206,9 +176,8 @@ def main():
         (out / "progress.json").write_text(
             json.dumps(history, indent=2), encoding="utf-8"
         )
-        valkey = "test_selection" if a.official_protocol else "validation"
         print(
-            f"epoch={e + 1} train={history[-1]['train']['accuracy']:.4f} {'test_selection' if a.official_protocol else 'val'}={history[-1][valkey]['accuracy']:.4f}",
+            f"epoch={e + 1} train={history[-1]['train']['accuracy']:.4f} val={history[-1]['validation']['accuracy']:.4f}",
             flush=True,
         )
 
@@ -224,11 +193,10 @@ def main():
         record=lambda e, tr, va: {
             "epoch": e + 1,
             "train": tr,
-            ("test_selection" if a.official_protocol else "validation"): va,
+            "validation": va,
         },
         save_epoch=save_epoch,
         validation_context=(lambda: ema.apply(net)) if ema else nullcontext,
-        replace_on_tie=a.official_protocol,
     )
     ck = torch.load(out / "best.pt", weights_only=True)
     net.load_state_dict(ck["net"])
@@ -238,21 +206,19 @@ def main():
         {
             "model": "tssl",
             "split": {
-                "train": 60000 if a.official_protocol else 50000,
-                "validation": 0 if a.official_protocol else 10000,
+                "train": 50000,
+                "validation": 10000,
                 "test": 10000,
             },
             "config": vars(a),
             "parameter_count": sum(
                 p.numel() for p in net.get_parameters() if p.requires_grad
             ),
-            "selection": "official test accuracy (test set used for selection)"
-            if a.official_protocol
-            else "validation accuracy",
+            "selection": "validation accuracy",
             "test": te,
             "best_epoch": ck["epoch"],
             "history": history,
-            "source": "TSSL-BP repository; network and loss unchanged except configurable hidden width",
+            "source": "TSSL architecture and loss with snnTorch surrogate gradients",
             "device": "CPU smoke only"
             if a.cpu_smoke
             else torch.cuda.get_device_name(0),

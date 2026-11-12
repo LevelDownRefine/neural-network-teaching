@@ -1,6 +1,5 @@
 import torch
 import torch.nn.functional as f
-import global_v as glv
 
 
 def psp(inputs, network_config):

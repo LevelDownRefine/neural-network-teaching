@@ -18,10 +18,8 @@ from utils.io import atomic_write_json
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def load_predictor(model_name, weights, device, *, neuron="tsslbp"):
+def load_predictor(model_name, weights, device):
     """Load a checkpoint and return a function that predicts on device tensors."""
-    if neuron != "tsslbp" and model_name != "tssl":
-        raise ValueError("neuron selection only applies to TSSL")
     checkpoint = torch.load(weights, map_location="cpu", weights_only=True)
     if model_name == "tssl":
         if device.type != "cuda":
@@ -31,24 +29,17 @@ def load_predictor(model_name, weights, device, *, neuron="tsslbp"):
         src = ROOT / "models" / "tssl"
         sys.path.insert(0, str(src))
         import cnns
-        import global_v as glv
 
         cfg = yaml.safe_load((src / "Networks" / "MNIST_CNN.yaml").read_text())
         hidden = checkpoint["net"]["my_parameters.2"].shape[0]
         cfg["Layers"]["FC_1"]["n_outputs"] = hidden
         cfg["Layers"]["output"]["n_inputs"] = hidden
         nc = cfg["Network"]
-        glv.init(nc["n_steps"], nc["tau_s"])
         net = cnns.Network(nc, cfg["Layers"], [1, 28, 28]).cuda()
         net.load_state_dict(checkpoint["net"])
         net.eval()
 
         def predict(images):
-            if neuron == "snntorch":
-                from functions.loss_f import psp
-                from utils.snntorch_tssl import forward
-
-                return forward(net, images.to(device), psp)
             x = images.to(device).unsqueeze(-1).repeat(1, 1, 1, 1, nc["n_steps"])
             return (
                 net.forward(x, checkpoint["epoch"] - 1, False)
@@ -86,7 +77,6 @@ def main():
     parser.add_argument(
         "--output", type=Path, help="write evaluation to this JSON file"
     )
-    parser.add_argument("--neuron", choices=("tsslbp", "snntorch"), default="tsslbp")
     args = parser.parse_args()
     device = torch.device(
         ("cuda" if torch.cuda.is_available() else "cpu")
@@ -103,9 +93,7 @@ def main():
         batch_size=args.batch_size,
         shuffle=False,
     )
-    predict, checkpoint = load_predictor(
-        args.model, args.weights, device, neuron=args.neuron
-    )
+    predict, checkpoint = load_predictor(args.model, args.weights, device)
     predict = inference_engine(predict, args.engine)
 
     with torch.inference_mode():
@@ -118,8 +106,6 @@ def main():
         "evaluation": "official MNIST test set; selection protocol must be checked in original experiment",
         "test": metrics,
     }
-    if args.model == "tssl":
-        result["neuron"] = args.neuron
     if args.output:
         atomic_write_json(args.output, result)
     print(

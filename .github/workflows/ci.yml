@@ -14,8 +14,8 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
-      - run: uv sync --locked --extra cpu --group snntorch --dev
-      - run: uv run --locked --extra cpu --group snntorch ruff check .
-      - run: uv run --locked --extra cpu --group snntorch ruff format --check .
-      - run: uv run --locked --extra cpu --group snntorch pytest -q
-      - run: uv run --locked --extra cpu --group snntorch python mnist/evaluate.py report
+      - run: uv sync --locked --extra cpu --dev
+      - run: uv run --locked --extra cpu ruff check .
+      - run: uv run --locked --extra cpu ruff format --check .
+      - run: uv run --locked --extra cpu pytest -q
+      - run: uv run --locked --extra cpu python mnist/evaluate.py report
