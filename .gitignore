@@ -26,3 +26,4 @@ mnist/results/reproduction_status.json
 
 mnist/results/snntorch/
 mnist/results/snntorch_*/
+lif/output/
