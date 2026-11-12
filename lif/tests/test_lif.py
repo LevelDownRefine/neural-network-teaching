@@ -12,7 +12,11 @@ def simulate():
     )
     namespace = {}
     for cell in notebook["cells"]:
-        if set(cell.get("metadata", {}).get("tags", [])) & {"lif-imports", "lif-core"}:
+        if set(cell.get("metadata", {}).get("tags", [])) & {
+            "lif-imports",
+            "lif-defaults",
+            "lif-core",
+        }:
             exec("".join(cell["source"]), namespace)
     return namespace["simulate"]
 
