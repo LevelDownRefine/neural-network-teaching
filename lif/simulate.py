@@ -24,18 +24,21 @@ class Parameters:
 
 
 def lif_step(neuron, membrane, current_na, refractory, params):
-    """Advance one time step; return membrane, spike and refractory steps."""
+    """推进一个时间步，返回膜电位、是否发放及剩余不应期步数。"""
     reset = params.reset_mv - params.rest_mv
     if refractory:
+        # 不应期内保持重置电位，不接受输入也不发放。
         return torch.tensor(reset, dtype=torch.float64), False, refractory - 1
 
+    # Euler 输入增量：Δt / τ × R × I；MΩ × nA 的单位为 mV。
     drive = torch.tensor(
         params.dt_ms / params.tau_ms * params.resistance_mohm * float(current_na),
         dtype=torch.float64,
     )
+    # 保留重置前电位，以便单独处理恰好等于阈值的情况。
     before_reset = neuron.beta * membrane + drive
     spike, membrane = neuron(drive, membrane)
-    # snnTorch uses >; the assignment specifies reaching the threshold.
+    # snnTorch 用严格大于；题目要求达到阈值即发放。
     if spike.item() or before_reset.item() >= params.threshold_mv - params.rest_mv:
         return (
             torch.tensor(reset, dtype=torch.float64),
@@ -60,6 +63,7 @@ def simulate(current_na, params=Parameters()):
     if not np.isclose(ratio, round(ratio)):
         raise ValueError("refractory period must be a multiple of time step")
     current = np.asarray(current_na, dtype=float)
+    # 以静息电位为零点，snnTorch 的 beta 对应 Euler 泄漏系数。
     neuron = snn.Leaky(
         beta=torch.tensor(1 - params.dt_ms / params.tau_ms, dtype=torch.float64),
         threshold=params.threshold_mv - params.rest_mv,
@@ -76,6 +80,7 @@ def simulate(current_na, params=Parameters()):
             membrane, spikes[i], refractory = lif_step(
                 neuron, membrane, value, refractory, params
             )
+            # 记录每步结束后的电位；发生脉冲时记录的是重置电位。
             voltages[i] = membrane.item() + params.rest_mv
     return voltages, spikes
 
@@ -90,6 +95,7 @@ def inputs(params, periodic=False, current_na=2.0):
 
 
 def plot_signal(time_ms, current, voltage, spikes, params, output):
+    # 用 50 ms 窗口中的实际脉冲数计算发放率（Hz）。
     window = min(len(spikes), max(1, round(50 / params.dt_ms)))
     rate = np.convolve(spikes.astype(float), np.ones(window), mode="same") / (
         window * params.dt_ms / 1000
