@@ -23,6 +23,28 @@ class Parameters:
     duration_ms: float = 2000.0
 
 
+def lif_step(neuron, membrane, current_na, refractory, params):
+    """Advance one time step; return membrane, spike and refractory steps."""
+    reset = params.reset_mv - params.rest_mv
+    if refractory:
+        return torch.tensor(reset, dtype=torch.float64), False, refractory - 1
+
+    drive = torch.tensor(
+        params.dt_ms / params.tau_ms * params.resistance_mohm * float(current_na),
+        dtype=torch.float64,
+    )
+    before_reset = neuron.beta * membrane + drive
+    spike, membrane = neuron(drive, membrane)
+    # snnTorch uses >; the assignment specifies reaching the threshold.
+    if spike.item() or before_reset.item() >= params.threshold_mv - params.rest_mv:
+        return (
+            torch.tensor(reset, dtype=torch.float64),
+            True,
+            int(round(params.refractory_ms / params.dt_ms)),
+        )
+    return membrane, False, 0
+
+
 def simulate(current_na, params=Parameters()):
     """Euler LIF: mV, nA, MOhm and ms; post-spike reset is immediate."""
     if (
@@ -46,33 +68,14 @@ def simulate(current_na, params=Parameters()):
     )
     membrane = torch.tensor(params.reset_mv - params.rest_mv, dtype=torch.float64)
     neuron = neuron.double()
-    reset = params.reset_mv - params.rest_mv
     refractory = 0
     voltages = np.empty(len(current))
     spikes = np.zeros(len(current), dtype=bool)
     with torch.no_grad():
         for i, value in enumerate(current):
-            if refractory:
-                membrane = torch.tensor(reset, dtype=torch.float64)
-                refractory -= 1
-            else:
-                drive = torch.tensor(
-                    params.dt_ms
-                    / params.tau_ms
-                    * params.resistance_mohm
-                    * float(value),
-                    dtype=torch.float64,
-                )
-                before_reset = neuron.beta * membrane + drive
-                spike, membrane = neuron(drive, membrane)
-                # snnTorch uses >; the assignment specifies reaching the threshold.
-                if (
-                    spike.item()
-                    or before_reset.item() >= params.threshold_mv - params.rest_mv
-                ):
-                    spikes[i] = True
-                    membrane = torch.tensor(reset, dtype=torch.float64)
-                    refractory = int(round(ratio))
+            membrane, spikes[i], refractory = lif_step(
+                neuron, membrane, value, refractory, params
+            )
             voltages[i] = membrane.item() + params.rest_mv
     return voltages, spikes
 
