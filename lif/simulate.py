@@ -23,6 +23,11 @@ class Parameters:
     duration_ms: float = 2000.0
 
 
+def threshold_reached(voltage):
+    """达到阈值即发放；此仿真不需要反向传播。"""
+    return (voltage >= 0).to(voltage.dtype)
+
+
 def lif_step(neuron, membrane, current_na, refractory, params):
     """推进一个时间步，返回膜电位、是否发放及剩余不应期步数。"""
     reset = params.reset_mv - params.rest_mv
@@ -35,11 +40,8 @@ def lif_step(neuron, membrane, current_na, refractory, params):
         params.dt_ms / params.tau_ms * params.resistance_mohm * float(current_na),
         dtype=torch.float64,
     )
-    # 保留重置前电位，以便单独处理恰好等于阈值的情况。
-    before_reset = neuron.beta * membrane + drive
     spike, membrane = neuron(drive, membrane)
-    # snnTorch 用严格大于；题目要求达到阈值即发放。
-    if spike.item() or before_reset.item() >= params.threshold_mv - params.rest_mv:
+    if spike.item():
         return (
             torch.tensor(reset, dtype=torch.float64),
             True,
@@ -69,6 +71,7 @@ def simulate(current_na, params=Parameters()):
         threshold=params.threshold_mv - params.rest_mv,
         reset_mechanism="zero",
         reset_delay=False,
+        spike_grad=threshold_reached,
     )
     membrane = torch.tensor(params.reset_mv - params.rest_mv, dtype=torch.float64)
     neuron = neuron.double()
