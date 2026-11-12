@@ -23,14 +23,14 @@ def simulate():
 
 def test_subthreshold_and_critical_current_do_not_spike(simulate):
     for current in (0, 1, 1.5):
-        voltage, spikes = simulate(current)
+        voltage, spikes = simulate(current, duration_ms=2000, dt=0.1)
         assert not spikes.any()
         if current == 0:
             assert np.allclose(voltage, -65)
 
 
 def test_superthreshold_reset_and_refractory(simulate):
-    voltage, spikes = simulate(2.0)
+    voltage, spikes = simulate(2.0, duration_ms=2000, dt=0.1)
     times = np.flatnonzero(spikes)
     assert len(times) > 1
     assert np.all(voltage[times] == -65)
