@@ -110,14 +110,14 @@ WSL 使用独立的 `.venv-wsl`，与 Windows 的 `.venv` 分开。`--engine ind
 
 图像预先放在设备上；预热后连续推理，报告吞吐量、PyTorch 峰值分配显存和 GPU 板卡平均功率。计时包含模型调用、GPU 同步和 TSSL 时间步展开，不含数据加载、预处理和传输。`nvidia-smi` 默认约每秒采集功率；平均功率乘运行时间估算板卡能耗，包含 GPU 空闲和其他任务功耗，不含 CPU 等整机用电。少于两次有效采样时不估算功率和能耗。
 
-以下为 RTX 5070 Ti Laptop GPU 的单次 FP32 实验，使用默认 NCHW 输入；每档吞吐量测约 30 秒，编译和预热时间不计入。逻辑回归使用 Windows、PyTorch 2.11.0+cu128 和 eager；其余模型使用 WSL2、PyTorch 2.15.0+cu132 和 Inductor；SNN 数值于 2026-11-12 在 snnTorch 前向下重测。运行环境不同，结果需谨慎比较。batch 沿用此前 FP32 扫描中吞吐量最高的档位，不表示 Inductor 的最优 batch。
+以下为 RTX 5070 Ti Laptop GPU 的单次 FP32 实验，使用默认 NCHW 输入；每档吞吐量测约 30 秒，编译和预热时间不计入。逻辑回归使用 Windows、PyTorch 2.11.0+cu128 和 eager；其余模型使用 WSL2、PyTorch 2.15.0+cu132 和 Inductor；TSSL 结构 CNN 与 snnTorch SNN 均于 2026-11-12 重测。运行环境不同，结果需谨慎比较。batch 沿用此前 FP32 扫描中吞吐量最高的档位，不表示 Inductor 的最优 batch。[CNN 吞吐量数据](results/performance/offline_tssl_cnn_2026-11-12.json)；[SNN 吞吐量数据](results/performance/offline_tssl_2026-11-12.json)。
 
 | 模型 | 执行方式 | batch | 吞吐量（图片/秒） | 平均板卡功率（W） | 板卡能耗估算（mJ/图） |
 |---|---|---:|---:|---:|---:|
 | 逻辑回归 | eager | 2048 | 22,289,579 | 63.8 | 0.00286 |
 | M5 CNN | Inductor | 128 | 51,530 | 108.6 | 2.107 |
-| TSSL 结构 CNN | Inductor | 1024 | 1,328,729 | 104.6 | 0.0787 |
-| snnTorch SNN | Inductor | 512 | 60,752 | 110.5 | 1.818 |
+| TSSL 结构 CNN | Inductor | 1024 | 1,611,033 | 132.0 | 0.0819 |
+| snnTorch SNN | Inductor | 512 | 90,955 | 132.4 | 1.456 |
 
 
 ### 整机耗电测试
@@ -136,14 +136,14 @@ WSL 使用独立的 `.venv-wsl`，与 Windows 的 `.venv` 分开。`--engine ind
 
 ## 模型推理延时
 
-RTX 5070 Ti Laptop GPU、WSL2、PyTorch 2.15.0+cu132，FP32 Inductor；输入为预先放在 GPU 上的随机张量。每次测量为单个 batch 的模型调用至 GPU 同步完成，不含编译、数据传输及服务端排队。batch 1、8、32 各预热 50 次后测量 1,000 次，分别取各 batch 的 P90、P99 最小值；每档仅测一轮。CNN 测于 2026-11-07，snnTorch SNN 测于 2026-11-12。
+RTX 5070 Ti Laptop GPU、WSL2、PyTorch 2.15.0+cu132，FP32 Inductor；输入为预先放在 GPU 上的随机张量。每次测量为单个 batch 的模型调用至 GPU 同步完成，不含编译、数据传输及服务端排队。2026-11-12 分别测量 batch 1、8、32，每档预热 50 次，重复三轮、每轮 1,000 次。各指标先取三轮中位数，再取各 batch 的最小值。
 
 | 模型 | 最小 P90（ms，batch） | 最小 P99（ms，batch） |
 |---|---:|---:|
-| TSSL 结构 CNN | 0.332（8） | 0.854（8） |
-| snnTorch SNN | 0.632（8） | 0.926（1） |
+| TSSL 结构 CNN | 0.349（1） | 0.658（1） |
+| snnTorch SNN | 0.534（8） | 0.855（8） |
 
-[各 batch 测量结果](results/latency/model_p90_p99.json)。最小值对应的 batch 可不同；单轮结果会受系统负载影响。
+[各 batch 三轮测量结果](results/performance/latency_2026-11-12.json)。最小值对应的 batch 可不同；结果会受系统负载影响。
 
 ```bash
 uv run --locked --extra cuda python mnist/benchmark.py latency --model tssl --weights mnist/results/tssl_augment_ema_seed42/best.pt --batch-size 1 --engine inductor --output latency.json

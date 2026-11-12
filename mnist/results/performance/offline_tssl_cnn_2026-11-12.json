@@ -1,0 +1,149 @@
+{
+  "mode": "offline",
+  "engine": "inductor",
+  "fullgraph": true,
+  "warmup_and_compile_seconds": 42.506778930999985,
+  "model": "tssl_cnn",
+  "weights": "cnn_tssl_cnn_augment_ema_seed42/best.pt",
+  "best_epoch": 91,
+  "device": "cuda",
+  "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+  "torch": "2.15.0+cu132",
+  "input": "MNIST test images, preloaded on device; preprocessing and transfer excluded",
+  "warmup_batches_per_shape": 20,
+  "throughput": {
+    "batch_size": 1024,
+    "images": 48331776,
+    "seconds": 30.00048320100001,
+    "images_per_second": 1611033.2515707265,
+    "peak_allocated_bytes": 48290304
+  },
+  "power": {
+    "samples": 29,
+    "readings": [
+      {
+        "seconds": 0.06619989099999657,
+        "watts": 85.12
+      },
+      {
+        "seconds": 1.116406756999993,
+        "watts": 133.81
+      },
+      {
+        "seconds": 2.1754332769999962,
+        "watts": 133.54
+      },
+      {
+        "seconds": 3.232106571999992,
+        "watts": 133.01
+      },
+      {
+        "seconds": 4.297574432999994,
+        "watts": 133.43
+      },
+      {
+        "seconds": 5.350982396000006,
+        "watts": 133.02
+      },
+      {
+        "seconds": 6.42225019899999,
+        "watts": 133.16
+      },
+      {
+        "seconds": 7.48030692399999,
+        "watts": 133.04
+      },
+      {
+        "seconds": 8.539621317000012,
+        "watts": 133.17
+      },
+      {
+        "seconds": 9.596744942000015,
+        "watts": 133.57
+      },
+      {
+        "seconds": 10.657501789999998,
+        "watts": 132.92
+      },
+      {
+        "seconds": 11.712259590999992,
+        "watts": 133.14
+      },
+      {
+        "seconds": 12.768847383000008,
+        "watts": 133.36
+      },
+      {
+        "seconds": 13.82183625799999,
+        "watts": 133.02
+      },
+      {
+        "seconds": 14.878150841000007,
+        "watts": 133.35
+      },
+      {
+        "seconds": 15.92627390300001,
+        "watts": 133.76
+      },
+      {
+        "seconds": 16.98728822999999,
+        "watts": 134.06
+      },
+      {
+        "seconds": 18.047202494000004,
+        "watts": 133.76
+      },
+      {
+        "seconds": 19.111075784000008,
+        "watts": 133.6
+      },
+      {
+        "seconds": 20.166412917000002,
+        "watts": 133.64
+      },
+      {
+        "seconds": 21.22518729699999,
+        "watts": 133.56
+      },
+      {
+        "seconds": 22.28216474300001,
+        "watts": 134.14
+      },
+      {
+        "seconds": 23.341475328,
+        "watts": 133.92
+      },
+      {
+        "seconds": 24.406478187999994,
+        "watts": 134.04
+      },
+      {
+        "seconds": 25.469845668000005,
+        "watts": 134.56
+      },
+      {
+        "seconds": 26.526553374000002,
+        "watts": 133.73
+      },
+      {
+        "seconds": 27.588709611000013,
+        "watts": 134.21
+      },
+      {
+        "seconds": 28.646830228,
+        "watts": 134.57
+      },
+      {
+        "seconds": 29.71027368700001,
+        "watts": 134.54
+      }
+    ],
+    "interval_seconds": 1.0,
+    "mean_board_watts": 131.95689655172413,
+    "estimated_board_joules": 3958.770658256096,
+    "estimated_board_joules_per_image": 8.190823896593611e-05
+  },
+  "power_note": "Approximate total GPU board power including idle/background load; sampled by nvidia-smi during throughput, not whole-system or model-only energy.",
+  "timing_note": "Host wall time with CUDA synchronization; includes prediction and time-step expansion, excludes data loading and transfers.",
+  "measurement_date": "2026-11-12"
+}
