@@ -5,7 +5,6 @@ import layers.pooling as pooling
 import layers.dropout as dropout
 import layers.linear as linear
 import functions.loss_f as f
-import global_v as glv
 
 
 class Network(nn.Module):
@@ -38,17 +37,14 @@ class Network(nn.Module):
 
     def forward(self, spike_input, epoch, is_train):
         spikes = f.psp(spike_input, self.network_config)
-        skip_spikes = {}
         assert self.network_config['model'] == "LIF"
         
         for l in self.layers:
             if l.type == "dropout":
                 if is_train:
                     spikes = l(spikes)
-            elif self.network_config["rule"] == "TSSLBP":
-                spikes = l.forward_pass(spikes, epoch)
             else:
-                raise Exception('Unrecognized rule type. It is: {}'.format(self.network_config['rule']))
+                spikes = l.forward_pass(spikes, epoch)
         return spikes
 
     def get_parameters(self):

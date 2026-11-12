@@ -34,6 +34,16 @@ TSSL 官方协议实验使用全部 60,000 张训练图、按测试集准确率�
 
 [混淆矩阵和逐类指标](RESULTS.md)列出了上表各模型的完整结果。较新的权重和原始结果保存在本机 `results/`，不纳入 Git。
 
+
+### snnTorch 前向对照
+
+现以 snnTorch 1.0.0 的 LIF 神经元和原突触滤波加载 TSSL-BP 增强 + EMA 权重；在 10,000 张测试图上与原实现逐批对照，输出得分逐项一致，准确率 99.38%、Macro OvR AUC 0.998782。表中的 TSSL-BP 结果为历史结果；当前训练使用不同的 snnTorch 代理梯度，不能声称复现原训练；[详细指标](results/snntorch_tssl/metrics.json)。
+
+```bash
+uv sync --locked --extra cuda
+uv run --locked --extra cuda python mnist/evaluate.py checkpoint --model tssl --weights mnist/results/tssl_augment_ema_seed42/best.pt --output snntorch_evaluation.json
+```
+
 ## 安装与训练
 
 需要 Python 3.12 和 [uv](https://docs.astral.sh/uv/)。以下命令使用 PyTorch 2.15 和 CUDA 13.2；仅使用 CPU 时将 `--extra cuda` 替换为 `--extra cpu`。TSSL 训练需要 CUDA。
@@ -51,9 +61,9 @@ uv run --locked --extra cuda ruff format --check .
 
 CNN 和 TSSL 按轮保存检查点；用相同参数加 `--resume` 续训。`--max-batches` 仅用于代码检查。
 
-TSSL 可加 `--ema` 使用权重平均，加 `--augment` 启用训练集旋转和平移；这两个选项不能用于 `--official-protocol`。
+SNN 可加 `--ema` 使用权重平均，加 `--augment` 启用训练集旋转和平移。当前训练使用 snnTorch 代理梯度，结果保存在 `snntorch_*`，不会覆盖历史 TSSL-BP 结果。
 
-官方协议使用 `train_tssl.py --official-protocol --epochs 100 --seed 3 --tag official_seed3`。本实现固定 PyTorch CPU 随机种子、使用 0 个数据加载进程；官方脚本只显式设置 CUDA 和 NumPy 种子、使用 4 个进程。官方配置文件为 200 轮，此处采用论文的 100 轮；核对的源码版本为 `ffaac71d3344172980f048d98b123e40c5420401`。
+历史官方协议使用测试集选模，已移除对应训练入口；历史结果仅供参考。
 
 ## 评估
 
@@ -100,40 +110,40 @@ WSL 使用独立的 `.venv-wsl`，与 Windows 的 `.venv` 分开。`--engine ind
 
 图像预先放在设备上；预热后连续推理，报告吞吐量、PyTorch 峰值分配显存和 GPU 板卡平均功率。计时包含模型调用、GPU 同步和 TSSL 时间步展开，不含数据加载、预处理和传输。`nvidia-smi` 默认约每秒采集功率；平均功率乘运行时间估算板卡能耗，包含 GPU 空闲和其他任务功耗，不含 CPU 等整机用电。少于两次有效采样时不估算功率和能耗。
 
-以下为 RTX 5070 Ti Laptop GPU 的单次 FP32 实验，使用默认 NCHW 输入；每档吞吐量测约 30 秒，编译和预热时间不计入。逻辑回归使用 Windows、PyTorch 2.11.0+cu128 和 eager；其余模型使用 WSL2、PyTorch 2.15.0+cu132 和 Inductor。运行环境不同，结果需谨慎比较。batch 沿用此前 FP32 扫描中吞吐量最高的档位，不表示 Inductor 的最优 batch。
+以下为 RTX 5070 Ti Laptop GPU 的单次 FP32 实验，使用默认 NCHW 输入；每档吞吐量测约 30 秒，编译和预热时间不计入。逻辑回归使用 Windows、PyTorch 2.11.0+cu128 和 eager；其余模型使用 WSL2、PyTorch 2.15.0+cu132 和 Inductor；TSSL 结构 CNN 与 snnTorch SNN 均于 2026-11-12 重测。运行环境不同，结果需谨慎比较。batch 沿用此前 FP32 扫描中吞吐量最高的档位，不表示 Inductor 的最优 batch。[CNN 吞吐量数据](results/performance/offline_tssl_cnn_2026-11-12.json)；[SNN 吞吐量数据](results/snntorch_tssl/offline.json)。
 
 | 模型 | 执行方式 | batch | 吞吐量（图片/秒） | 平均板卡功率（W） | 板卡能耗估算（mJ/图） |
 |---|---|---:|---:|---:|---:|
 | 逻辑回归 | eager | 2048 | 22,289,579 | 63.8 | 0.00286 |
 | M5 CNN | Inductor | 128 | 51,530 | 108.6 | 2.107 |
-| TSSL 结构 CNN | Inductor | 1024 | 1,328,729 | 104.6 | 0.0787 |
-| TSSL-BP SNN | Inductor | 512 | 84,937 | 110.3 | 1.298 |
+| TSSL 结构 CNN | Inductor | 1024 | 1,611,033 | 132.0 | 0.0819 |
+| snnTorch SNN | Inductor | 512 | 90,955 | 132.4 | 1.456 |
 
 
 ### 整机耗电测试
 
-两次实验分别于 2026-11-06 和 2026-11-07 进行，使用上述增强 + EMA 权重，在 RTX 5070 Ti Laptop GPU、WSL2、PyTorch 2.15.0+cu132 上以 FP32 Inductor 运行。编译产物加载、预热后等待接入电表；计时 15 分钟，重复推理已放在 GPU 上的同一批 MNIST 测试图片，不含数据加载和传输。电表测量整机耗电，数值由使用者记录，仪器标称精度为 0.02 度。
+以下是旧 TSSL-BP 前向实现的历史电表数据，snnTorch 版本未重测整机耗电。两次实验分别于 2026-11-06 和 2026-11-07 进行，使用上述增强 + EMA 权重，在 RTX 5070 Ti Laptop GPU、WSL2、PyTorch 2.15.0+cu132 上以 FP32 Inductor 运行。编译产物加载、预热后等待接入电表；计时 15 分钟，重复推理已放在 GPU 上的同一批 MNIST 测试图片，不含数据加载和传输。电表测量整机耗电，数值由使用者记录，仪器标称精度为 0.02 度。
 
 | 模型 | batch | 实际用时（秒） | 累计图片数 | 吞吐量（图片/秒） | 电表耗电（度） | 每百万张耗电（度） | GPU 平均板卡功率（W） |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | TSSL 结构 CNN | 1024 | 900.000 | 1,218,428,928 | 1,353,810 | 0.05 | 0.0000410 | 124.2 |
 | TSSL-BP SNN | 512 | 900.001 | 67,577,856 | 75,086 | 0.05 | 0.000740 | 121.9 |
 
-单位图片整机耗电比（SNN ∶ CNN）约为 18 ∶ 1。
+旧实现的单位图片整机耗电比（SNN ∶ CNN）约为 18 ∶ 1。
 
 单位图片耗电等于整机电表耗电除以累计推理图片数，包含空闲及其他任务的耗电。电表精度相对单次读数较粗，结果为近似值；不同 batch、测试日期和运行状态也会影响比较。电表读数与 GPU 板卡功率为不同测量范围。完整采样和原始计数见 [CNN](results/power/tssl_cnn_15min.json) 和 [SNN](results/power/tssl_snn_15min.json)。
 
 
 ## 模型推理延时
 
-RTX 5070 Ti Laptop GPU、WSL2、PyTorch 2.15.0+cu132，FP32 Inductor；输入为预先放在 GPU 上的随机张量。每次测量为单个 batch 的模型调用至 GPU 同步完成，不含编译、数据传输及服务端排队。batch 1、8、32 各预热 50 次后测量 1,000 次，分别取各 batch 的 P90、P99 最小值；每档仅测一轮。
+RTX 5070 Ti Laptop GPU、WSL2、PyTorch 2.15.0+cu132，FP32 Inductor；输入为预先放在 GPU 上的随机张量。每次测量为单个 batch 的模型调用至 GPU 同步完成，不含编译、数据传输及服务端排队。2026-11-12 分别测量 batch 1、8、32，每档预热 50 次，重复三轮、每轮 1,000 次。各指标先取三轮中位数，再取各 batch 的最小值。
 
 | 模型 | 最小 P90（ms，batch） | 最小 P99（ms，batch） |
 |---|---:|---:|
-| TSSL 结构 CNN | 0.332（8） | 0.854（8） |
-| TSSL-BP SNN | 0.568（1） | 1.380（1） |
+| TSSL 结构 CNN | 0.349（1） | 0.658（1） |
+| snnTorch SNN | 0.534（8） | 0.855（8） |
 
-[各 batch 测量结果](results/latency/model_p90_p99_2026-11-07.json)。最小值对应的 batch 可不同；单轮结果会受系统负载影响。
+[各 batch 三轮测量结果](results/latency/model_p90_p99.json)。最小值对应的 batch 可不同；结果会受系统负载影响。
 
 ```bash
 uv run --locked --extra cuda python mnist/benchmark.py latency --model tssl --weights mnist/results/tssl_augment_ema_seed42/best.pt --batch-size 1 --engine inductor --output latency.json

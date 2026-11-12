@@ -10,8 +10,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-cpu = ["torch==2.15.0", "torchvision==0.29.2"]
-cuda = ["torch==2.15.0", "torchvision==0.29.2"]
+cpu = ["torch==2.15.0", "torchvision==0.29.2", "snntorch==1.0.0"]
+cuda = ["torch==2.15.0", "torchvision==0.29.2", "snntorch==1.0.0"]
 
 [dependency-groups]
 dev = [

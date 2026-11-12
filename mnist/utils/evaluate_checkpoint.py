@@ -29,14 +29,12 @@ def load_predictor(model_name, weights, device):
         src = ROOT / "models" / "tssl"
         sys.path.insert(0, str(src))
         import cnns
-        import global_v as glv
 
         cfg = yaml.safe_load((src / "Networks" / "MNIST_CNN.yaml").read_text())
         hidden = checkpoint["net"]["my_parameters.2"].shape[0]
         cfg["Layers"]["FC_1"]["n_outputs"] = hidden
         cfg["Layers"]["output"]["n_inputs"] = hidden
         nc = cfg["Network"]
-        glv.init(nc["n_steps"], nc["tau_s"])
         net = cnns.Network(nc, cfg["Layers"], [1, 28, 28]).cuda()
         net.load_state_dict(checkpoint["net"])
         net.eval()

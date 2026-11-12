@@ -4,8 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as f
 import torch.nn.init as init
-import functions.tsslbp as tsslbp
-import global_v as glv
+from utils.snntorch_tssl import create_neuron, lif_filter
 
 
 class ConvLayer(nn.Conv3d):
@@ -73,6 +72,7 @@ class ConvLayer(nn.Conv3d):
         super(ConvLayer, self).__init__(in_features, out_features, kernel, stride, padding, dilation, groups,
                                         bias=False)
         # nn.init.kaiming_normal_(self.weight)
+        object.__setattr__(self, "_snn_neuron", create_neuron(network_config, config).cuda())
         self.weight = torch.nn.Parameter(weight_scale * self.weight.cuda(), requires_grad=True)
 
         self.in_shape = in_shape
@@ -93,7 +93,7 @@ class ConvLayer(nn.Conv3d):
 
     def forward_pass(self, x, epoch):
         y = self.forward(x)
-        y = tsslbp.TSSLBP.apply(y, self.network_config, self.layer_config)
+        y = lif_filter(y, self.network_config, self.layer_config, self._snn_neuron)
         return y
 
     def weight_clipper(self):

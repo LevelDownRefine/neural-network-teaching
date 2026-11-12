@@ -14,11 +14,9 @@ root = Path(__file__).resolve().parent.parent
 src = root / "models" / "tssl"
 sys.path.insert(0, str(src))
 import cnns
-import global_v as glv
 
 cfg = yaml.safe_load((src / "Networks" / "MNIST_CNN.yaml").read_text())
 nc = cfg["Network"]
-glv.init(nc["n_steps"], nc["tau_s"])
 net = cnns.Network(nc, cfg["Layers"], [1, 28, 28]).cuda()
 ck = torch.load(
     root / "results" / "tssl" / "best.pt", map_location="cuda", weights_only=True
