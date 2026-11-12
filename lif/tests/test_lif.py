@@ -41,3 +41,10 @@ def test_reaching_threshold_counts_as_spike(simulate):
     voltage, spikes = simulate(1.5, duration_ms=20, dt=20)
     assert spikes.tolist() == [True]
     assert voltage.tolist() == [-65]
+
+
+def test_equation_parameter_mapping(simulate):
+    functions = simulate.__globals__
+    assert functions["relative_voltage"](-50, -65) == 15
+    assert functions["decay_factor"](0.1, 20) == pytest.approx(0.995)
+    assert functions["input_increment"](0.1, 20, 10, 2) == pytest.approx(0.1)
