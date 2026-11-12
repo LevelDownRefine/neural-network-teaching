@@ -110,7 +110,7 @@ WSL 使用独立的 `.venv-wsl`，与 Windows 的 `.venv` 分开。`--engine ind
 
 图像预先放在设备上；预热后连续推理，报告吞吐量、PyTorch 峰值分配显存和 GPU 板卡平均功率。计时包含模型调用、GPU 同步和 TSSL 时间步展开，不含数据加载、预处理和传输。`nvidia-smi` 默认约每秒采集功率；平均功率乘运行时间估算板卡能耗，包含 GPU 空闲和其他任务功耗，不含 CPU 等整机用电。少于两次有效采样时不估算功率和能耗。
 
-以下为 RTX 5070 Ti Laptop GPU 的单次 FP32 实验，使用默认 NCHW 输入；每档吞吐量测约 30 秒，编译和预热时间不计入。逻辑回归使用 Windows、PyTorch 2.11.0+cu128 和 eager；其余模型使用 WSL2、PyTorch 2.15.0+cu132 和 Inductor；TSSL 结构 CNN 与 snnTorch SNN 均于 2026-11-12 重测。运行环境不同，结果需谨慎比较。batch 沿用此前 FP32 扫描中吞吐量最高的档位，不表示 Inductor 的最优 batch。[CNN 吞吐量数据](results/performance/offline_tssl_cnn_2026-11-12.json)；[SNN 吞吐量数据](results/performance/offline_tssl_2026-11-12.json)。
+以下为 RTX 5070 Ti Laptop GPU 的单次 FP32 实验，使用默认 NCHW 输入；每档吞吐量测约 30 秒，编译和预热时间不计入。逻辑回归使用 Windows、PyTorch 2.11.0+cu128 和 eager；其余模型使用 WSL2、PyTorch 2.15.0+cu132 和 Inductor；TSSL 结构 CNN 与 snnTorch SNN 均于 2026-11-12 重测。运行环境不同，结果需谨慎比较。batch 沿用此前 FP32 扫描中吞吐量最高的档位，不表示 Inductor 的最优 batch。[CNN 吞吐量数据](results/performance/offline_tssl_cnn_2026-11-12.json)；[SNN 吞吐量数据](results/snntorch_tssl/offline.json)。
 
 | 模型 | 执行方式 | batch | 吞吐量（图片/秒） | 平均板卡功率（W） | 板卡能耗估算（mJ/图） |
 |---|---|---:|---:|---:|---:|
@@ -143,7 +143,7 @@ RTX 5070 Ti Laptop GPU、WSL2、PyTorch 2.15.0+cu132，FP32 Inductor；输入为
 | TSSL 结构 CNN | 0.349（1） | 0.658（1） |
 | snnTorch SNN | 0.534（8） | 0.855（8） |
 
-[各 batch 三轮测量结果](results/performance/latency_2026-11-12.json)。最小值对应的 batch 可不同；结果会受系统负载影响。
+[各 batch 三轮测量结果](results/latency/model_p90_p99.json)。最小值对应的 batch 可不同；结果会受系统负载影响。
 
 ```bash
 uv run --locked --extra cuda python mnist/benchmark.py latency --model tssl --weights mnist/results/tssl_augment_ema_seed42/best.pt --batch-size 1 --engine inductor --output latency.json

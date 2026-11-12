@@ -2,79 +2,151 @@
   {
     "model": "tssl_cnn",
     "batch_size": 1,
-    "samples": 1000,
-    "p90_ms": 0.336949,
-    "p99_ms": 0.861435,
-    "torch": "2.15.0+cu132",
+    "trials": [
+      {
+        "p90_ms": 0.348622,
+        "p99_ms": 0.658326
+      },
+      {
+        "p90_ms": 0.3708,
+        "p99_ms": 0.770988
+      },
+      {
+        "p90_ms": 0.346664,
+        "p99_ms": 0.593595
+      }
+    ],
+    "median_p90_ms": 0.348622,
+    "median_p99_ms": 0.658326,
+    "warmup": 50,
+    "samples_per_trial": 1000,
     "engine": "inductor",
+    "torch": "2.15.0+cu132",
     "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU"
   },
   {
     "model": "tssl_cnn",
     "batch_size": 8,
-    "samples": 1000,
-    "p90_ms": 0.331683,
-    "p99_ms": 0.854176,
-    "torch": "2.15.0+cu132",
+    "trials": [
+      {
+        "p90_ms": 0.511258,
+        "p99_ms": 0.75864
+      },
+      {
+        "p90_ms": 0.620918,
+        "p99_ms": 1.216096
+      },
+      {
+        "p90_ms": 0.423587,
+        "p99_ms": 0.772184
+      }
+    ],
+    "median_p90_ms": 0.511258,
+    "median_p99_ms": 0.772184,
+    "warmup": 50,
+    "samples_per_trial": 1000,
     "engine": "inductor",
+    "torch": "2.15.0+cu132",
     "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU"
   },
   {
     "model": "tssl_cnn",
     "batch_size": 32,
-    "samples": 1000,
-    "p90_ms": 0.445604,
-    "p99_ms": 0.955073,
-    "torch": "2.15.0+cu132",
+    "trials": [
+      {
+        "p90_ms": 0.410032,
+        "p99_ms": 0.921853
+      },
+      {
+        "p90_ms": 0.384281,
+        "p99_ms": 0.717069
+      },
+      {
+        "p90_ms": 0.362747,
+        "p99_ms": 0.674696
+      }
+    ],
+    "median_p90_ms": 0.384281,
+    "median_p99_ms": 0.717069,
+    "warmup": 50,
+    "samples_per_trial": 1000,
     "engine": "inductor",
+    "torch": "2.15.0+cu132",
     "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU"
   },
   {
     "model": "tssl",
-    "weights": "tssl_augment_ema_seed42/best.pt",
-    "best_epoch": 98,
     "batch_size": 1,
-    "engine": "inductor",
+    "trials": [
+      {
+        "p90_ms": 0.56982,
+        "p99_ms": 0.811478
+      },
+      {
+        "p90_ms": 0.573225,
+        "p99_ms": 0.928256
+      },
+      {
+        "p90_ms": 0.595928,
+        "p99_ms": 0.933998
+      }
+    ],
+    "median_p90_ms": 0.573225,
+    "median_p99_ms": 0.928256,
     "warmup": 50,
-    "samples": 1000,
-    "p90_ms": 0.649551,
-    "p99_ms": 0.926164,
+    "samples_per_trial": 1000,
+    "engine": "inductor",
     "torch": "2.15.0+cu132",
-    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
-    "timing": "host wall time through CUDA synchronization; random inputs preloaded on GPU",
-    "implementation": "snntorch",
-    "measurement_date": "2026-11-12"
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU"
   },
   {
     "model": "tssl",
-    "weights": "tssl_augment_ema_seed42/best.pt",
-    "best_epoch": 98,
     "batch_size": 8,
-    "engine": "inductor",
+    "trials": [
+      {
+        "p90_ms": 0.534493,
+        "p99_ms": 0.904827
+      },
+      {
+        "p90_ms": 0.521825,
+        "p99_ms": 0.855267
+      },
+      {
+        "p90_ms": 0.536404,
+        "p99_ms": 0.848358
+      }
+    ],
+    "median_p90_ms": 0.534493,
+    "median_p99_ms": 0.855267,
     "warmup": 50,
-    "samples": 1000,
-    "p90_ms": 0.632172,
-    "p99_ms": 1.058581,
+    "samples_per_trial": 1000,
+    "engine": "inductor",
     "torch": "2.15.0+cu132",
-    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
-    "timing": "host wall time through CUDA synchronization; random inputs preloaded on GPU",
-    "implementation": "snntorch",
-    "measurement_date": "2026-11-12"
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU"
   },
   {
     "model": "tssl",
-    "weights": "tssl_augment_ema_seed42/best.pt",
-    "best_epoch": 98,
     "batch_size": 32,
-    "engine": "inductor",
+    "trials": [
+      {
+        "p90_ms": 0.627269,
+        "p99_ms": 1.085904
+      },
+      {
+        "p90_ms": 0.606485,
+        "p99_ms": 0.907279
+      },
+      {
+        "p90_ms": 0.58372,
+        "p99_ms": 0.975231
+      }
+    ],
+    "median_p90_ms": 0.606485,
+    "median_p99_ms": 0.975231,
     "warmup": 50,
-    "samples": 1000,
-    "p90_ms": 0.949907,
-    "p99_ms": 4.703214,
+    "samples_per_trial": 1000,
+    "engine": "inductor",
     "torch": "2.15.0+cu132",
-    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
-    "timing": "host wall time through CUDA synchronization; random inputs preloaded on GPU",
-    "implementation": "snntorch",
-    "measurement_date": "2026-11-12"
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU"
   }
 ]

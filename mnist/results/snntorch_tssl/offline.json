@@ -2,7 +2,7 @@
   "mode": "offline",
   "engine": "inductor",
   "fullgraph": true,
-  "warmup_and_compile_seconds": 63.71276688500001,
+  "warmup_and_compile_seconds": 50.774855344,
   "model": "tssl",
   "weights": "tssl_augment_ema_seed42/best.pt",
   "best_epoch": 98,
@@ -13,134 +13,137 @@
   "warmup_batches_per_shape": 20,
   "throughput": {
     "batch_size": 512,
-    "images": 1822720,
-    "seconds": 30.00272864799996,
-    "images_per_second": 60751.80765671812,
+    "images": 2728960,
+    "seconds": 30.003390182999965,
+    "images_per_second": 90955.05485730873,
     "peak_allocated_bytes": 250183168
   },
   "power": {
-    "samples": 28,
+    "samples": 29,
     "readings": [
       {
-        "seconds": 0.09304178200000024,
-        "watts": 76.6
+        "seconds": 0.06175388999997722,
+        "watts": 52.09
       },
       {
-        "seconds": 1.1583286229999885,
-        "watts": 103.55
+        "seconds": 1.1164901679999844,
+        "watts": 64.24
       },
       {
-        "seconds": 2.231742495999981,
-        "watts": 98.95
+        "seconds": 2.1841520520000017,
+        "watts": 137.91
       },
       {
-        "seconds": 3.29464451299998,
-        "watts": 104.39
+        "seconds": 3.2361831380000012,
+        "watts": 137.95
       },
       {
-        "seconds": 4.370816380000008,
-        "watts": 105.8
+        "seconds": 4.2985511149999525,
+        "watts": 137.05
       },
       {
-        "seconds": 5.432969662000005,
-        "watts": 109.49
+        "seconds": 5.354299069999968,
+        "watts": 137.95
       },
       {
-        "seconds": 6.508589459999996,
-        "watts": 111.05
+        "seconds": 6.415554644999986,
+        "watts": 138.04
       },
       {
-        "seconds": 7.573625203000006,
-        "watts": 109.55
+        "seconds": 7.475637705999986,
+        "watts": 137.95
       },
       {
-        "seconds": 8.644490971999971,
-        "watts": 105.25
+        "seconds": 8.541719720000003,
+        "watts": 137.59
       },
       {
-        "seconds": 9.709010305999982,
-        "watts": 109.73
+        "seconds": 9.605593733999967,
+        "watts": 137.71
       },
       {
-        "seconds": 10.780632733999994,
-        "watts": 109.14
+        "seconds": 10.670506950999993,
+        "watts": 138.13
       },
       {
-        "seconds": 11.849534285999994,
-        "watts": 111.61
+        "seconds": 11.72522944299999,
+        "watts": 138.03
       },
       {
-        "seconds": 12.926893630999984,
-        "watts": 110.53
+        "seconds": 12.789083729999959,
+        "watts": 138.07
       },
       {
-        "seconds": 13.98895952800001,
-        "watts": 112.72
+        "seconds": 13.84659400999999,
+        "watts": 138.04
       },
       {
-        "seconds": 15.062907992999953,
-        "watts": 113.99
+        "seconds": 14.908369364999999,
+        "watts": 137.79
       },
       {
-        "seconds": 16.144612203999998,
-        "watts": 112.69
+        "seconds": 15.966481776999956,
+        "watts": 138.21
       },
       {
-        "seconds": 17.225759515999982,
-        "watts": 116.3
+        "seconds": 17.05058626899995,
+        "watts": 138.15
       },
       {
-        "seconds": 18.29105449499997,
-        "watts": 113.7
+        "seconds": 18.12204189199997,
+        "watts": 138.17
       },
       {
-        "seconds": 19.37190155799999,
-        "watts": 114.86
+        "seconds": 19.20092647399997,
+        "watts": 137.77
       },
       {
-        "seconds": 20.442804851999995,
-        "watts": 115.53
+        "seconds": 20.26637931299996,
+        "watts": 138.11
       },
       {
-        "seconds": 21.528623601999982,
-        "watts": 117.75
+        "seconds": 21.337882307999962,
+        "watts": 138.05
       },
       {
-        "seconds": 22.595568536999963,
-        "watts": 115.95
+        "seconds": 22.399999482,
+        "watts": 138.06
       },
       {
-        "seconds": 23.676749013999995,
-        "watts": 113.49
+        "seconds": 23.469110873999966,
+        "watts": 138.18
       },
       {
-        "seconds": 24.75093156099996,
-        "watts": 115.31
+        "seconds": 24.531632611999953,
+        "watts": 137.64
       },
       {
-        "seconds": 25.835057747999997,
-        "watts": 115.98
+        "seconds": 25.598319516999993,
+        "watts": 138.08
       },
       {
-        "seconds": 26.898847391999993,
-        "watts": 116.89
+        "seconds": 26.65762484199996,
+        "watts": 137.06
       },
       {
-        "seconds": 27.971643131999997,
-        "watts": 115.03
+        "seconds": 27.719572186999983,
+        "watts": 137.98
       },
       {
-        "seconds": 29.034280188999958,
-        "watts": 117.52
+        "seconds": 28.778598711999962,
+        "watts": 137.96
+      },
+      {
+        "seconds": 29.842280778999964,
+        "watts": 137.91
       }
     ],
     "interval_seconds": 1.0,
-    "mean_board_watts": 110.47678571428571,
-    "estimated_board_joules": 3314.6050236889523,
-    "estimated_board_joules_per_image": 0.0018184938024978891
+    "mean_board_watts": 132.4093103448276,
+    "estimated_board_joules": 3972.728202137796,
+    "estimated_board_joules_per_image": 0.0014557663733208972
   },
   "power_note": "Approximate total GPU board power including idle/background load; sampled by nvidia-smi during throughput, not whole-system or model-only energy.",
   "timing_note": "Host wall time with CUDA synchronization; includes prediction and time-step expansion, excludes data loading and transfers.",
-  "implementation": "snntorch",
   "measurement_date": "2026-11-12"
 }
