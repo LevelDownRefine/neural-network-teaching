@@ -3,6 +3,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import torch
 
 
 @pytest.fixture(scope="module")
@@ -53,7 +54,26 @@ def test_equation_parameter_mapping(simulate):
 def test_module_accepts_numbers_and_resets(simulate):
     neuron = simulate.__globals__["LIFNeuron"](0.1, 20, 10, -65, -65, -50, 2)
     voltage, spike = neuron(2.0)
-    assert spike is False
-    assert voltage == pytest.approx(-64.9)
+    assert spike.item() == 0
+    assert voltage.item() == pytest.approx(-64.9)
     neuron.reset_state()
-    assert neuron(2.0)[0] == pytest.approx(-64.9)
+    assert neuron(2.0)[0].item() == pytest.approx(-64.9)
+
+
+def test_gradient_flows_through_membrane_and_spike(simulate):
+    neuron = simulate.__globals__["LIFNeuron"](0.1, 20, 10, -65, -65, -50, 2)
+    current = torch.tensor(2.0, requires_grad=True)
+    voltage, spike = neuron(current)
+    voltage_grad = torch.autograd.grad(voltage, current, retain_graph=True)[0]
+    spike_grad = torch.autograd.grad(spike, current)[0]
+    assert torch.isfinite(voltage_grad) and voltage_grad > 0
+    assert torch.isfinite(spike_grad) and spike_grad > 0
+
+
+def test_gradient_accumulates_across_time_steps(simulate):
+    neuron = simulate.__globals__["LIFNeuron"](0.1, 20, 10, -65, -65, -50, 2)
+    current = torch.tensor(2.0, requires_grad=True)
+    neuron(current)
+    voltage, _ = neuron(current)
+    gradient = torch.autograd.grad(voltage, current)[0]
+    assert gradient.item() == pytest.approx(0.09975, abs=1e-6)
