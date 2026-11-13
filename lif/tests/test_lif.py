@@ -50,9 +50,10 @@ def test_equation_parameter_mapping(simulate):
     assert functions["input_increment"](0.1, 20, 10, 2) == pytest.approx(0.1)
 
 
-def test_wrapper_accepts_and_returns_numbers(simulate):
-    functions = simulate.__globals__
-    neuron = functions["create_lif"](0.1, 20, 15)
-    spike, voltage = functions["lif_step"](neuron, 0.0, 0.1)
+def test_module_accepts_numbers_and_resets(simulate):
+    neuron = simulate.__globals__["LIFNeuron"](0.1, 20, 10, -65, -65, -50, 2)
+    voltage, spike = neuron(2.0)
     assert spike is False
-    assert voltage == pytest.approx(0.1)
+    assert voltage == pytest.approx(-64.9)
+    neuron.reset_state()
+    assert neuron(2.0)[0] == pytest.approx(-64.9)
