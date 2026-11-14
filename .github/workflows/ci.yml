@@ -19,3 +19,15 @@ jobs:
       - run: uv run --locked --extra cpu ruff format --check .
       - run: uv run --locked --extra cpu pytest -q
       - run: uv run --locked --extra cpu python mnist/evaluate.py report
+
+  desktop:
+    runs-on: windows-latest
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --locked --extra cpu --extra gui --dev
+      - run: uv run --locked --extra cpu --extra gui pytest -q lif/tests

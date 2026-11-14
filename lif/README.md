@@ -9,3 +9,18 @@ uv sync --locked --extra cpu
 ```
 
 在 VS Code 等支持 Jupyter 的编辑器中选择项目的 `.venv` 内核。
+
+## 桌面交互
+
+使用独立 Python 3.12 环境安装并启动：
+
+~~~bash
+uv sync --locked --extra cpu --extra gui
+uv run --locked --extra cpu --extra gui python -m lif.desktop
+~~~
+
+窗口中直接显示输入电流、膜电位、脉冲序列和发放率。可选择恒定或正弦输入，调整电流、阈值、时间常数、电阻、不应期和仿真时长；松开滑块后自动重新计算。计算在后台运行，连续修改参数时只展示最新结果。
+
+静息电位固定为 −65 mV，时间步为 0.1 ms。统计覆盖完整仿真时长，显示范围可选择前 200 ms、前 500 ms 或全部。发放率使用约 100 ms 的回看窗口；起始阶段按已有时长计算。
+
+可选的“导出结果”保存逐时间步 CSV、参数 JSON 和当前显示范围的 PNG；每行电流取步首值，膜电位和脉冲取步末值。仿真与 Notebook 共用 model.py，绘图共用 plot_lif.py。
