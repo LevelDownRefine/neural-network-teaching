@@ -9,3 +9,7 @@ uv sync --locked --extra cpu
 ```
 
 在 VS Code 等支持 Jupyter 的编辑器中选择项目的 `.venv` 内核。
+
+## 交互模拟器
+
+见 [simulator](simulator/README.md)：Rust 原生界面、共享仿真核心及 Windows exe 发布流程。

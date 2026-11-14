@@ -1,0 +1,18 @@
+[package]
+name = "lif-native"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+
+[lib]
+name = "lif_native"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+pyo3 = { version = "0.27", features = ["abi3-py312", "generate-import-lib"], optional = true }
+serde = { version = "1", features = ["derive"], optional = true }
+
+[features]
+python = ["dep:pyo3"]
+serialization = ["dep:serde"]
+extension-module = ["python", "pyo3/extension-module"]

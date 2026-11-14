@@ -1,0 +1,15 @@
+[package]
+name = "lif"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+
+[workspace]
+members = ["core"]
+resolver = "2"
+
+[dependencies]
+lif-native = { path = "core", features = ["serialization"] }
+eframe = { version = "0.33", default-features = false, features = ["glow", "default_fonts", "x11", "accesskit"] }
+egui_plot = "0.34"
+serde_json = "1"

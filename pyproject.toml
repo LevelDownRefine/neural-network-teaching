@@ -12,6 +12,9 @@ dependencies = [
 [project.optional-dependencies]
 cpu = ["torch==2.15.0", "torchvision==0.29.2", "snntorch==1.0.0"]
 cuda = ["torch==2.15.0", "torchvision==0.29.2", "snntorch==1.0.0"]
+rust = [
+    "lif-native",
+]
 
 [dependency-groups]
 dev = [
@@ -33,6 +36,7 @@ torchvision = [
     { index = "pytorch-cpu", extra = "cpu" },
     { index = "pytorch-cu132", extra = "cuda" },
 ]
+lif-native = { workspace = true }
 
 [[tool.uv.index]]
 name = "pytorch-cpu"
@@ -43,6 +47,11 @@ explicit = true
 name = "pytorch-cu132"
 url = "https://download.pytorch.org/whl/cu132"
 explicit = true
+
+[tool.uv.workspace]
+members = [
+    "lif/simulator/core",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["mnist/tests", "lif/tests"]
@@ -56,6 +65,7 @@ extend-exclude = ["mnist/models/tssl"]
 select = ["E4", "E7", "E9", "F", "I"]
 
 [tool.ruff.lint.per-file-ignores]
+"lif/model.py" = ["E741"] # I represents current in the equation
 "lif/task1_lif.ipynb" = ["E741"] # I represents current in the equation
 "mnist/train_tssl.py" = ["E402", "I001"]
 "mnist/utils/evaluate_tssl.py" = ["E402", "I001"]
