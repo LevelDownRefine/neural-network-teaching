@@ -26,15 +26,10 @@ def plot_signal(ax, signal, data, V_rest, V_th):
     ax.set_xlim(0, 200)
 
 
-def plot_comparison(examples, signal, V_rest, V_th):
-    fig, axes = plt.subplots(
-        len(examples), 1, figsize=(10, 2.5 * len(examples)), sharex=True, squeeze=False
-    )
-    for ax, (name, data) in zip(axes[:, 0], examples.items(), strict=True):
-        plot_signal(ax, signal, data, V_rest, V_th)
-        ax.set_title(name)
-    axes[-1, 0].set_xlabel("Time (ms)")
-    fig.tight_layout()
+def plot_individual(data, signal, V_rest, V_th):
+    fig, ax = plt.subplots(figsize=(10, 2))
+    plot_signal(ax, signal, data, V_rest, V_th)
+    ax.set_xlabel("Time (ms)")
     plt.show()
 
 
