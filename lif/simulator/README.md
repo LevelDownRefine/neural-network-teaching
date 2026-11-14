@@ -35,6 +35,8 @@ git push origin lif-v0.1.0
 
 CI 全部通过后自动创建 GitHub Release，上传压缩包和校验值；标签必须与 Cargo 版本一致。
 
+PR 和 main 推送运行检查；Rust 检查及 Windows 打包按相关文件变更触发，发布标签强制执行全部检查。同一 PR 的新提交会取消旧构建。
+
 ## Python 对照
 
 Notebook 和训练使用 snnTorch。运行 uv sync --locked --extra cpu --extra rust 可通过 maturin 安装 core 的 Python 扩展。

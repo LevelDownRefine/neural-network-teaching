@@ -1,16 +1,43 @@
-name: MNIST checks
+name: Checks
 on:
   push:
+    branches: [main]
+    tags: ['lif-v*']
   pull_request:
 
 permissions:
   contents: read
 
+concurrency:
+  group: checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      rust: ${{ steps.changes.outputs.rust }}
+      desktop: ${{ steps.changes.outputs.desktop }}
     steps:
       - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v4
+        id: changes
+        with:
+          filters: |
+            rust:
+              - 'lif/simulator/**/*.rs'
+              - 'lif/simulator/**/Cargo.{toml,lock}'
+              - '.github/workflows/ci.yml'
+            desktop:
+              - 'lif/simulator/release.ps1'
+              - 'lif/simulator/core/pyproject.toml'
+              - 'lif/model.py'
+              - 'lif/tests/**'
+              - 'pyproject.toml'
+              - 'uv.lock'
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
@@ -21,6 +48,8 @@ jobs:
       - run: uv run --locked --extra cpu python mnist/evaluate.py report
 
   desktop:
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/lif-v') || needs.test.outputs.rust == 'true' || needs.test.outputs.desktop == 'true'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -40,6 +69,8 @@ jobs:
           if-no-files-found: error
 
   rust:
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/lif-v') || needs.test.outputs.rust == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
