@@ -22,16 +22,14 @@ jobs:
 
   desktop:
     runs-on: windows-latest
-    env:
-      QT_QPA_PLATFORM: offscreen
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
       - uses: dtolnay/rust-toolchain@stable
-      - run: uv sync --locked --extra cpu --extra gui --dev
-      - run: uv run --locked --extra cpu --extra gui pytest -q lif/tests
+      - run: uv sync --locked --extra cpu --extra rust --dev
+      - run: uv run --locked --extra cpu --extra rust pytest -q lif/tests
       - run: cargo fmt --manifest-path lif/gui-rust/Cargo.toml --check
       - run: cargo clippy --locked --manifest-path lif/gui-rust/Cargo.toml --all-targets -- -D warnings
       - run: cargo test --locked --manifest-path lif/gui-rust/Cargo.toml
