@@ -17,6 +17,7 @@ def simulate():
             "lif-imports",
             "lif-defaults",
             "lif-core",
+            "lif-rate",
         }:
             exec("".join(cell["source"]), namespace)
     return namespace["simulate"]
@@ -38,22 +39,29 @@ def test_superthreshold_reset_and_refractory(simulate):
     assert np.all(np.diff(times) > 20)
 
 
+def test_refractory_blocks_strong_input_for_full_period(simulate):
+    neuron = simulate.__globals__["LIFNeuron"](1, 1, 10, -65, -50, 2)
+    results = [neuron(2) for _ in range(4)]
+    assert [spike.item() for _, spike in results] == [1, 0, 0, 1]
+    assert all(voltage.item() == -65 for voltage, _ in results)
+
+
 def test_reaching_threshold_counts_as_spike(simulate):
-    neuron = simulate.__globals__["LIFNeuron"](20, 20, 10, -65, -65, -50, 0)
+    neuron = simulate.__globals__["LIFNeuron"](20, 20, 10, -65, -50, 0)
     voltage, spike = neuron(1.5)
     assert spike.item() == 1
     assert voltage.item() == -65
 
 
 def test_equation_parameter_mapping(simulate):
-    neuron = simulate.__globals__["LIFNeuron"](0.1, 20, 10, -65, -65, -50, 2)
+    neuron = simulate.__globals__["LIFNeuron"](0.1, 20, 10, -65, -50, 2)
     assert neuron._relative_voltage(-50) == 15
     assert neuron._decay_factor() == pytest.approx(0.995)
     assert neuron._input_increment(2) == pytest.approx(0.1)
 
 
 def test_module_accepts_numbers_and_resets(simulate):
-    neuron = simulate.__globals__["LIFNeuron"](0.1, 20, 10, -65, -65, -50, 2)
+    neuron = simulate.__globals__["LIFNeuron"](0.1, 20, 10, -65, -50, 2)
     voltage, spike = neuron(2.0)
     assert spike.item() == 0
     assert voltage.item() == pytest.approx(-64.9)
@@ -62,7 +70,7 @@ def test_module_accepts_numbers_and_resets(simulate):
 
 
 def test_gradient_flows_through_membrane_and_spike(simulate):
-    neuron = simulate.__globals__["LIFNeuron"](0.1, 20, 10, -65, -65, -50, 2)
+    neuron = simulate.__globals__["LIFNeuron"](0.1, 20, 10, -65, -50, 2)
     current = torch.tensor(2.0, requires_grad=True)
     voltage, spike = neuron(current)
     voltage_grad = torch.autograd.grad(voltage, current, retain_graph=True)[0]
@@ -72,7 +80,7 @@ def test_gradient_flows_through_membrane_and_spike(simulate):
 
 
 def test_gradient_accumulates_across_time_steps(simulate):
-    neuron = simulate.__globals__["LIFNeuron"](0.1, 20, 10, -65, -65, -50, 2)
+    neuron = simulate.__globals__["LIFNeuron"](0.1, 20, 10, -65, -50, 2)
     current = torch.tensor(2.0, requires_grad=True)
     neuron(current)
     voltage, _ = neuron(current)
@@ -80,22 +88,22 @@ def test_gradient_accumulates_across_time_steps(simulate):
     assert gradient.item() == pytest.approx(0.09975, abs=1e-6)
 
 
-def test_initial_voltage_is_rest_even_if_reset_differs(simulate):
-    neuron = simulate.__globals__["LIFNeuron"](1, 1, 10, -65, -70, -50, 0)
+def test_initial_and_reset_voltage_are_rest(simulate):
+    neuron = simulate.__globals__["LIFNeuron"](1, 1, 10, -65, -50, 0)
     assert neuron.U.item() == 0
     voltage, spike = neuron(0)
     assert voltage.item() == -65
     assert spike.item() == 0
     voltage, spike = neuron(2)
     assert spike.item() == 1
-    assert voltage.item() == -70
+    assert voltage.item() == -65
     neuron.reset_state()
     assert neuron.U.item() == 0
     assert neuron(0)[0].item() == -65
 
 
 @pytest.mark.parametrize(
-    "dt,tau_m,refractory_ms,V_reset",
+    "dt,tau_m,refractory_ms,V_rest",
     [
         (0, 20, 2, -65),
         (0.1, 0, 2, -65),
@@ -106,21 +114,19 @@ def test_initial_voltage_is_rest_even_if_reset_differs(simulate):
         (float("nan"), 20, 2, -65),
     ],
 )
-def test_invalid_parameters_are_rejected(simulate, dt, tau_m, refractory_ms, V_reset):
+def test_invalid_parameters_are_rejected(simulate, dt, tau_m, refractory_ms, V_rest):
     with pytest.raises(ValueError):
-        simulate.__globals__["LIFNeuron"](
-            dt, tau_m, 10, -65, V_reset, -50, refractory_ms
-        )
+        simulate.__globals__["LIFNeuron"](dt, tau_m, 10, V_rest, -50, refractory_ms)
 
 
 def test_rejects_non_scalar_input(simulate):
-    neuron = simulate.__globals__["LIFNeuron"](0.1, 20, 10, -65, -65, -50, 2)
+    neuron = simulate.__globals__["LIFNeuron"](0.1, 20, 10, -65, -50, 2)
     with pytest.raises(ValueError, match="scalar"):
         neuron(torch.tensor([1.0, 2.0]))
 
 
 def test_reset_state_clears_previous_computation_graph(simulate):
-    neuron = simulate.__globals__["LIFNeuron"](0.1, 20, 10, -65, -65, -50, 2)
+    neuron = simulate.__globals__["LIFNeuron"](0.1, 20, 10, -65, -50, 2)
     neuron(torch.tensor(2.0, requires_grad=True))
     assert neuron.U.grad_fn is not None
     neuron.reset_state()
@@ -133,3 +139,9 @@ def test_reset_state_clears_previous_computation_graph(simulate):
 def test_invalid_duration_is_rejected(simulate, duration_ms):
     with pytest.raises(ValueError):
         simulate(2.0, duration_ms=duration_ms, dt=0.1)
+
+
+def test_firing_rate_uses_trailing_spike_window(simulate):
+    firing_rate = simulate.__globals__["firing_rate"]
+    rates = firing_rate(np.array([1, 0, 0, 1]), dt=50)
+    np.testing.assert_allclose(rates, [20, 10, 0, 10])
