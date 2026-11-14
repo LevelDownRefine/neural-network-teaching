@@ -50,7 +50,7 @@ explicit = true
 
 [tool.uv.workspace]
 members = [
-    "lif/native",
+    "lif/simulator/core",
 ]
 
 [tool.pytest.ini_options]

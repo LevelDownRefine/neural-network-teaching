@@ -28,5 +28,5 @@ mnist/results/snntorch/
 mnist/results/snntorch_*/
 lif/output/
 *.pyd
-lif/native/target/
-lif/gui-rust/target/
+lif/simulator/**/target/
+lif/simulator/dist/

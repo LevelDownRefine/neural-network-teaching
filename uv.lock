@@ -382,7 +382,7 @@ wheels = [
 [[package]]
 name = "lif-native"
 version = "0.1.0"
-source = { editable = "lif/native" }
+source = { editable = "lif/simulator/core" }
 
 [[package]]
 name = "markupsafe"
@@ -508,7 +508,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "lif-native", marker = "extra == 'rust'", editable = "lif/native" },
+    { name = "lif-native", marker = "extra == 'rust'", editable = "lif/simulator/core" },
     { name = "matplotlib", specifier = ">=3.8,<4" },
     { name = "numpy", specifier = ">=1.26,<3" },
     { name = "pyyaml", specifier = ">=6,<7" },

@@ -254,7 +254,9 @@ impl Lab {
         );
         ui.add_space(12.0);
         if ui.button("导出数据与参数").clicked() {
-            self.status = match self.export_to(Path::new("lif/output")) {
+            let result = std::env::current_exe()
+                .and_then(|exe| self.export_to(&exe.with_file_name("output")));
+            self.status = match result {
                 Ok(path) => format!("已保存至 {}", path.display()),
                 Err(error) => format!("导出失败：{error}"),
             };
