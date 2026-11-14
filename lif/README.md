@@ -12,10 +12,10 @@ uv sync --locked --extra cpu
 
 ## 桌面交互
 
-使用独立 Python 3.12 环境安装并启动：
+使用 uv 管理的独立 Python 3.12 环境安装并启动，避免已有 Conda 环境中的 Qt DLL 冲突：
 
 ~~~bash
-uv sync --locked --extra cpu --extra gui
+uv sync --locked --managed-python --python 3.12 --extra cpu --extra gui
 uv run --locked --extra cpu --extra gui python -m lif.desktop
 ~~~
 
