@@ -14,6 +14,10 @@ cpu = ["torch==2.15.0", "torchvision==0.29.2", "snntorch==1.0.0"]
 cuda = ["torch==2.15.0", "torchvision==0.29.2", "snntorch==1.0.0"]
 gui = [
     "pyside6>=6.8,<7",
+    "lif-native",
+]
+rust = [
+    "lif-native",
 ]
 
 [dependency-groups]
@@ -36,6 +40,7 @@ torchvision = [
     { index = "pytorch-cpu", extra = "cpu" },
     { index = "pytorch-cu132", extra = "cuda" },
 ]
+lif-native = { workspace = true }
 
 [[tool.uv.index]]
 name = "pytorch-cpu"
@@ -46,6 +51,11 @@ explicit = true
 name = "pytorch-cu132"
 url = "https://download.pytorch.org/whl/cu132"
 explicit = true
+
+[tool.uv.workspace]
+members = [
+    "lif/native",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["mnist/tests", "lif/tests"]

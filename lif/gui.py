@@ -56,7 +56,7 @@ class SimulationWorker(QRunnable):
     @Slot()
     def run(self):
         try:
-            data = simulate_experiment(self.parameters)
+            data = simulate_experiment(self.parameters, backend="rust")
             self.signals.finished.emit(self.revision, data, "")
         except Exception as error:
             self.signals.finished.emit(self.revision, None, str(error))

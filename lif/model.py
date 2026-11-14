@@ -7,19 +7,23 @@ import snntorch as snn
 import torch
 
 
+def _validate_neuron_parameters(dt, tau_m, R, V_rest, V_th, refractory_ms):
+    if not all(np.isfinite(x) for x in (dt, tau_m, R, V_rest, V_th, refractory_ms)):
+        raise ValueError("LIF parameters must be finite")
+    if dt <= 0 or tau_m <= 0 or dt > tau_m or R <= 0:
+        raise ValueError("require 0 < dt <= tau_m and R > 0")
+    if refractory_ms < 0 or not np.isclose(
+        refractory_ms / dt, round(refractory_ms / dt), rtol=0, atol=1e-7
+    ):
+        raise ValueError("refractory_ms must be a nonnegative multiple of dt")
+    if V_rest >= V_th:
+        raise ValueError("rest potential must be below threshold")
+
+
 class LIFNeuron(torch.nn.Module):
     def __init__(self, dt, tau_m, R, V_rest, V_th, refractory_ms):
         super().__init__()
-        if not all(np.isfinite(x) for x in (dt, tau_m, R, V_rest, V_th, refractory_ms)):
-            raise ValueError("LIF parameters must be finite")
-        if dt <= 0 or tau_m <= 0 or dt > tau_m or R <= 0:
-            raise ValueError("require 0 < dt <= tau_m and R > 0")
-        if refractory_ms < 0 or not np.isclose(
-            refractory_ms / dt, round(refractory_ms / dt), rtol=0, atol=1e-7
-        ):
-            raise ValueError("refractory_ms must be a nonnegative multiple of dt")
-        if V_rest >= V_th:
-            raise ValueError("rest potential must be below threshold")
+        _validate_neuron_parameters(dt, tau_m, R, V_rest, V_th, refractory_ms)
         self.dt, self.tau_m, self.R = dt, tau_m, R
         self.V_rest = V_rest
         self.refractory_steps = round(refractory_ms / dt)
@@ -133,7 +137,7 @@ class SimulationParameters:
     duration: float = 2000.0
 
 
-def simulate_experiment(parameters):
+def simulate_experiment(parameters, backend="snntorch"):
     p = parameters
     if not np.isfinite(p.duration) or p.duration <= 0:
         raise ValueError("duration must be positive and finite")
@@ -141,7 +145,15 @@ def simulate_experiment(parameters):
         raise ValueError("input parameters must be finite")
     if p.amplitude < 0 or p.frequency < 0:
         raise ValueError("amplitude and frequency must be nonnegative")
-    neuron = LIFNeuron(p.dt, p.tau, p.resistance, p.rest, p.threshold, p.refractory)
+    _validate_neuron_parameters(
+        p.dt, p.tau, p.resistance, p.rest, p.threshold, p.refractory
+    )
+    steps = round(p.duration / p.dt)
+    if steps < 1 or not np.isclose(p.duration / p.dt, steps, rtol=0, atol=1e-7):
+        raise ValueError("duration must be a multiple of dt")
+    if backend not in ("snntorch", "rust"):
+        raise ValueError("unknown simulation backend")
+    neuron = None
     try:
         input_times = np.arange(round(p.duration / p.dt)) * p.dt
         current = np.full_like(input_times, p.current)
@@ -151,8 +163,25 @@ def simulate_experiment(parameters):
             )
         elif p.mode != "constant":
             raise ValueError("unknown input mode")
-        with torch.inference_mode():
-            voltage, spikes = simulate_current(current, p.duration, p.dt, neuron)
+        if backend == "rust":
+            from lif_native import simulate
+
+            voltage, spikes = simulate(
+                current.astype(np.float32).tolist(),
+                1 - p.dt / p.tau,
+                p.dt / p.tau * p.resistance,
+                p.rest,
+                p.threshold - p.rest,
+                round(p.refractory / p.dt),
+            )
+            voltage = np.asarray(voltage, dtype=np.float32)
+            spikes = np.frombuffer(spikes, dtype=np.uint8).astype(np.float32)
+        else:
+            neuron = LIFNeuron(
+                p.dt, p.tau, p.resistance, p.rest, p.threshold, p.refractory
+            )
+            with torch.inference_mode():
+                voltage, spikes = simulate_current(current, p.duration, p.dt, neuron)
         return {
             "input_time_ms": input_times,
             "time_ms": input_times + p.dt,
@@ -163,4 +192,5 @@ def simulate_experiment(parameters):
         }
     finally:
         # snnTorch 会全局保留神经元；桌面仿真结束后只移除本次临时对象。
-        snn.SpikingNeuron.instances.remove(neuron.neuron)
+        if neuron is not None:
+            snn.SpikingNeuron.instances.remove(neuron.neuron)
