@@ -219,7 +219,7 @@ impl Lab {
             "ms",
             &mut self.parameters.duration,
             100.0..=5000.0,
-            100.0,
+            DT,
         );
         ui.horizontal(|ui| {
             ui.label("显示范围");
@@ -575,6 +575,30 @@ mod tests {
             );
             assert!(!output.shapes.is_empty());
             assert_eq!(lab.parameters, Parameters::default());
+        }
+    }
+
+    #[test]
+    fn duration_entry_preserves_valid_time_steps() {
+        for duration in [250.0, 250.1] {
+            let context = egui::Context::default();
+            let mut lab = lab();
+            lab.parameters.duration = duration;
+            lab.recompute();
+            for _ in 0..2 {
+                let _ = context.run(
+                    egui::RawInput {
+                        screen_rect: Some(egui::Rect::from_min_size(
+                            egui::Pos2::ZERO,
+                            egui::vec2(1360.0, 820.0),
+                        )),
+                        ..Default::default()
+                    },
+                    |ctx| lab.render(ctx),
+                );
+                assert_eq!(lab.parameters.duration, duration);
+                assert_eq!(lab.result.spikes.len(), (duration / DT).round() as usize);
+            }
         }
     }
 
