@@ -9,7 +9,7 @@ import pytest
 pytest.importorskip("PySide6")
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
-from lif.desktop import LIFWindow  # noqa: E402
+from lif.gui import LIFWindow  # noqa: E402
 
 
 @pytest.fixture
@@ -93,7 +93,7 @@ def test_spin_box_preserves_values_between_slider_steps(window):
 def test_export_confirms_sidecar_collisions(
     window, tmp_path, monkeypatch, suffix, accept
 ):
-    from lif.desktop import QFileDialog, QMessageBox
+    from lif.gui import QFileDialog, QMessageBox
 
     widget, app = window
     calculate(widget, app)

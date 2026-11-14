@@ -1,4 +1,4 @@
-"""运行：uv run --extra cpu --extra gui python -m lif.desktop。"""
+"""运行：uv run --extra cpu --extra gui python -m lif.gui。"""
 
 import csv
 import json

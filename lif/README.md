@@ -16,7 +16,7 @@ uv sync --locked --extra cpu
 
 ~~~bash
 uv sync --locked --managed-python --python 3.12 --extra cpu --extra gui
-uv run --locked --extra cpu --extra gui python -m lif.desktop
+uv run --locked --extra cpu --extra gui python -m lif.gui
 ~~~
 
 窗口中直接显示输入电流、膜电位、脉冲序列和发放率。可选择恒定或正弦输入，调整电流、阈值、时间常数、电阻、不应期和仿真时长；松开滑块后自动重新计算。计算在后台运行，连续修改参数时只展示最新结果。
