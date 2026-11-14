@@ -9,3 +9,5 @@ uv sync --locked --extra cpu
 ```
 
 在 VS Code 等支持 Jupyter 的编辑器中选择项目的 `.venv` 内核。
+
+[交互式调参](interactive_lif.ipynb)：调整输入电流、阈值和膜时间常数。
