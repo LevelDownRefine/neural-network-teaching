@@ -339,8 +339,8 @@ impl Lab {
                     .show(ui, |plot| {
                         plot.set_plot_bounds(PlotBounds::from_min_max([0.0, min], [span, max]));
                         if signal == 2 {
-                            for k in 0..count {
-                                if self.result.spikes[k] != 0 {
+                            for (k, &spike) in self.result.spikes.iter().enumerate().take(count) {
+                                if spike != 0 {
                                     plot.vline(
                                         VLine::new("脉冲", (k + 1) as f64 * DT)
                                             .color(color)
