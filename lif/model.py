@@ -81,6 +81,8 @@ class LIFNeuron(torch.nn.Module):
 
 
 def simulate_current(current, duration_ms, dt, neuron):
+    if not np.isfinite(dt) or dt <= 0 or dt != neuron.dt:
+        raise ValueError("dt must match the neuron time step")
     if not np.isfinite(duration_ms) or duration_ms <= 0:
         raise ValueError("duration_ms must be positive and finite")
     if round(duration_ms / dt) < 1 or not np.isclose(
@@ -133,28 +135,32 @@ class SimulationParameters:
 
 def simulate_experiment(parameters):
     p = parameters
-    neuron = LIFNeuron(p.dt, p.tau, p.resistance, p.rest, p.threshold, p.refractory)
     if not np.isfinite(p.duration) or p.duration <= 0:
         raise ValueError("duration must be positive and finite")
     if not all(np.isfinite(x) for x in (p.current, p.amplitude, p.frequency, p.phase)):
         raise ValueError("input parameters must be finite")
     if p.amplitude < 0 or p.frequency < 0:
         raise ValueError("amplitude and frequency must be nonnegative")
-    input_times = np.arange(round(p.duration / p.dt)) * p.dt
-    current = np.full_like(input_times, p.current)
-    if p.mode == "sinusoidal":
-        current += p.amplitude * np.sin(
-            2 * np.pi * p.frequency * input_times / 1000 + p.phase
-        )
-    elif p.mode != "constant":
-        raise ValueError("unknown input mode")
-    with torch.inference_mode():
-        voltage, spikes = simulate_current(current, p.duration, p.dt, neuron)
-    return {
-        "input_time_ms": input_times,
-        "time_ms": input_times + p.dt,
-        "current": current,
-        "voltage": voltage,
-        "spikes": spikes,
-        "rate": firing_rate(spikes, p.dt),
-    }
+    neuron = LIFNeuron(p.dt, p.tau, p.resistance, p.rest, p.threshold, p.refractory)
+    try:
+        input_times = np.arange(round(p.duration / p.dt)) * p.dt
+        current = np.full_like(input_times, p.current)
+        if p.mode == "sinusoidal":
+            current += p.amplitude * np.sin(
+                2 * np.pi * p.frequency * input_times / 1000 + p.phase
+            )
+        elif p.mode != "constant":
+            raise ValueError("unknown input mode")
+        with torch.inference_mode():
+            voltage, spikes = simulate_current(current, p.duration, p.dt, neuron)
+        return {
+            "input_time_ms": input_times,
+            "time_ms": input_times + p.dt,
+            "current": current,
+            "voltage": voltage,
+            "spikes": spikes,
+            "rate": firing_rate(spikes, p.dt),
+        }
+    finally:
+        # snnTorch 会全局保留神经元；桌面仿真结束后只移除本次临时对象。
+        snn.SpikingNeuron.instances.remove(neuron.neuron)

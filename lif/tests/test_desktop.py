@@ -58,11 +58,16 @@ def test_stale_result_is_not_displayed_or_exported(window, monkeypatch):
     calculate(widget, app)
     previous_result = widget.result
     previous_revision = widget.revision
-    widget.controls["current"].spin.setValue(3)
+    widget.controls["threshold"].spin.setValue(-45)
     widget.timer.stop()
     restarted = []
     monkeypatch.setattr(widget, "start_simulation", lambda: restarted.append(True))
     widget.finish_simulation(previous_revision, {"wrong": True}, "")
     assert widget.result is previous_result
     assert not widget.export.isEnabled()
+    # 修改参数但尚未取得新结果时，重绘仍使用旧结果对应的阈值。
+    widget.redraw()
+    assert widget.axes[1].lines[1].get_ydata()[0] == -50
+    with pytest.raises(ValueError, match="等待"):
+        widget.save_results(None)
     assert restarted == [True]
