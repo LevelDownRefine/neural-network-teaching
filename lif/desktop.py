@@ -9,7 +9,16 @@ from pathlib import Path
 import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg, NavigationToolbar2QT
 from matplotlib.figure import Figure
-from PySide6.QtCore import QObject, QRunnable, Qt, QThreadPool, QTimer, Signal, Slot
+from PySide6.QtCore import (
+    QObject,
+    QRunnable,
+    QSignalBlocker,
+    Qt,
+    QThreadPool,
+    QTimer,
+    Signal,
+    Slot,
+)
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QApplication,
@@ -59,6 +68,7 @@ class ParameterControl(QWidget):
     def __init__(self, low, high, step, value):
         super().__init__()
         self.step = step
+        self.low = low
         self.slider = QSlider(Qt.Orientation.Horizontal)
         self.slider.setRange(0, round((high - low) / step))
         self.slider.setTracking(False)
@@ -75,10 +85,13 @@ class ParameterControl(QWidget):
         self.slider.valueChanged.connect(
             lambda index: self.spin.setValue(low + index * step)
         )
-        self.spin.valueChanged.connect(
-            lambda number: self.slider.setValue(round((number - low) / step))
-        )
+        self.spin.valueChanged.connect(self._sync_slider)
         self.spin.valueChanged.connect(self.changed)
+
+    def _sync_slider(self, number):
+        # 只移动滑块指示位置，不用近似步长反向改写用户输入。
+        with QSignalBlocker(self.slider):
+            self.slider.setValue(round((number - self.low) / self.step))
 
 
 class LIFWindow(QMainWindow):
@@ -245,12 +258,33 @@ class LIFWindow(QMainWindow):
     @Slot()
     def export_results(self):
         filename, _ = QFileDialog.getSaveFileName(
-            self, "导出结果", "lif-result.csv", "CSV (*.csv)"
+            self,
+            "导出结果",
+            "lif-result.csv",
+            "CSV (*.csv)",
+            options=QFileDialog.Option.DontConfirmOverwrite,
         )
         if not filename:
             return
+        path = Path(filename).with_suffix(".csv")
+        collisions = [
+            target
+            for target in (path, path.with_suffix(".json"), path.with_suffix(".png"))
+            if target.exists()
+        ]
+        if collisions:
+            answer = QMessageBox.question(
+                self,
+                "确认覆盖",
+                "以下文件已存在，是否覆盖？\n"
+                + "\n".join(str(target) for target in collisions),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if answer != QMessageBox.StandardButton.Yes:
+                return
         try:
-            self.save_results(Path(filename).with_suffix(".csv"))
+            self.save_results(path)
         except OSError as error:
             QMessageBox.warning(self, "导出失败", str(error))
 

@@ -71,3 +71,53 @@ def test_stale_result_is_not_displayed_or_exported(window, monkeypatch):
     with pytest.raises(ValueError, match="等待"):
         widget.save_results(None)
     assert restarted == [True]
+
+
+def test_spin_box_preserves_values_between_slider_steps(window):
+    widget, _ = window
+    duration = widget.controls["duration"]
+    duration.spin.setValue(2000)
+    duration.spin.setValue(250)
+    assert duration.spin.value() == 250
+    assert duration.slider.value() == 2
+    duration.spin.setValue(200)
+    duration.spin.setValue(250)
+    assert duration.spin.value() == 250
+    duration.slider.setValue(3)
+    assert duration.spin.value() == 400
+    widget.timer.stop()
+
+
+@pytest.mark.parametrize("suffix", [".json", ".png"])
+@pytest.mark.parametrize("accept", [False, True])
+def test_export_confirms_sidecar_collisions(
+    window, tmp_path, monkeypatch, suffix, accept
+):
+    from lif.desktop import QFileDialog, QMessageBox
+
+    widget, app = window
+    calculate(widget, app)
+    target = tmp_path / "result.csv"
+    sidecar = target.with_suffix(suffix)
+    sidecar.write_bytes(b"original")
+    monkeypatch.setattr(
+        QFileDialog, "getSaveFileName", lambda *args, **kwargs: (str(target), "CSV")
+    )
+    confirmations = []
+
+    def confirm(parent, title, message, *args):
+        # 所有覆盖确认完成前不能写 CSV。
+        assert not target.exists()
+        assert sidecar.read_bytes() == b"original"
+        confirmations.append(message)
+        return (
+            QMessageBox.StandardButton.Yes if accept else QMessageBox.StandardButton.No
+        )
+
+    monkeypatch.setattr(QMessageBox, "question", confirm)
+    widget.export_results()
+    assert len(confirmations) == 1
+    assert str(sidecar) in confirmations[0]
+    assert target.exists() == accept
+    if not accept:
+        assert sidecar.read_bytes() == b"original"
