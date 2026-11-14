@@ -31,6 +31,18 @@ def test_subthreshold_and_critical_current_do_not_spike(simulate):
             assert np.allclose(voltage, -65)
 
 
+def test_time_varying_current_and_constant_input_match(simulate):
+    current = np.array([0.0, 2.0, 0.0])
+    voltage, _ = simulate(current, duration_ms=3, dt=1)
+    np.testing.assert_allclose(voltage, [-65, -64, -64.05], atol=1e-5)
+    scalar_voltage, scalar_spikes = simulate(2, duration_ms=3, dt=1)
+    array_voltage, array_spikes = simulate(np.full(3, 2), duration_ms=3, dt=1)
+    np.testing.assert_array_equal(array_voltage, scalar_voltage)
+    np.testing.assert_array_equal(array_spikes, scalar_spikes)
+    with pytest.raises(ValueError, match="one value per time step"):
+        simulate([2, 2], duration_ms=3, dt=1)
+
+
 def test_superthreshold_reset_and_refractory(simulate):
     voltage, spikes = simulate(2.0, duration_ms=2000, dt=0.1)
     times = np.flatnonzero(spikes)
