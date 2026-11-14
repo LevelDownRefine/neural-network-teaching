@@ -39,6 +39,13 @@ def test_superthreshold_reset_and_refractory(simulate):
     assert np.all(np.diff(times) > 20)
 
 
+def test_refractory_blocks_strong_input_for_full_period(simulate):
+    neuron = simulate.__globals__["LIFNeuron"](1, 1, 10, -65, -50, 2)
+    results = [neuron(2) for _ in range(4)]
+    assert [spike.item() for _, spike in results] == [1, 0, 0, 1]
+    assert all(voltage.item() == -65 for voltage, _ in results)
+
+
 def test_reaching_threshold_counts_as_spike(simulate):
     neuron = simulate.__globals__["LIFNeuron"](20, 20, 10, -65, -50, 0)
     voltage, spike = neuron(1.5)
