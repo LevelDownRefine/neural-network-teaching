@@ -17,6 +17,7 @@ def simulate():
             "lif-imports",
             "lif-defaults",
             "lif-core",
+            "lif-rate",
         }:
             exec("".join(cell["source"]), namespace)
     return namespace["simulate"]
@@ -133,3 +134,9 @@ def test_reset_state_clears_previous_computation_graph(simulate):
 def test_invalid_duration_is_rejected(simulate, duration_ms):
     with pytest.raises(ValueError):
         simulate(2.0, duration_ms=duration_ms, dt=0.1)
+
+
+def test_firing_rate_uses_trailing_spike_window(simulate):
+    firing_rate = simulate.__globals__["firing_rate"]
+    rates = firing_rate(np.array([1, 0, 0, 1]), dt=50)
+    np.testing.assert_allclose(rates, [20, 10, 0, 10])
