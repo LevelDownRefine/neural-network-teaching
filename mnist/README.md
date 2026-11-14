@@ -63,6 +63,8 @@ CNN 和 TSSL 按轮保存检查点；用相同参数加 `--resume` 续训。`--m
 
 SNN 可加 `--ema` 使用权重平均，加 `--augment` 启用训练集旋转和平移。当前训练使用 snnTorch 代理梯度，结果保存在 `snntorch_*`，不会覆盖历史 TSSL-BP 结果。
 
+当前 SNN 将标准化后的连续图像复制到各时间步，使用 `repeat_static_input` 生成时间维度；[脉冲编码 Notebook](spike_encoding.ipynb) 展示 Rate、Latency 和 Phase 编码，尚未接入训练。
+
 历史官方协议使用测试集选模，已移除对应训练入口；历史结果仅供参考。
 
 ## 评估

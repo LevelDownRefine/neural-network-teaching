@@ -14,6 +14,7 @@ import numpy as np
 import torch
 import yaml
 from data_pipeline.mnist import mnist_loaders
+from encoding import repeat_static_input
 from utils.checkpoints import prepare_output, save_training, restore_best, cpu_snapshot
 from utils.cli import positive_int
 from utils.ema import ParameterEMA
@@ -92,7 +93,7 @@ def main():
             net.eval()
 
             def predict(x):
-                x = x.cuda().unsqueeze(-1).repeat(1, 1, 1, 1, steps)
+                x = repeat_static_input(x.cuda(), steps)
                 return net.forward(x, epoch, False).sum(dim=4).squeeze(-1).squeeze(-1)
 
             return evaluate_batches(loader, predict, a.max_batches)
@@ -100,7 +101,7 @@ def main():
         n = correct = 0
         losses = 0.0
         for idx, (x, y) in enumerate(loader):
-            x = x.cuda().unsqueeze(-1).repeat(1, 1, 1, 1, steps)
+            x = repeat_static_input(x.cuda(), steps)
             y = y.cuda()
             with torch.set_grad_enabled(training):
                 pred = net.forward(x, epoch, training)

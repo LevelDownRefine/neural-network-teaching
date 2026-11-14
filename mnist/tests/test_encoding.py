@@ -1,6 +1,32 @@
 import numpy as np
 import pytest
-from encoding import latency_encode, phase_encode, rate_encode
+import torch
+from encoding import latency_encode, phase_encode, rate_encode, repeat_static_input
+
+
+def test_repeat_static_input_keeps_values_shape_and_gradients():
+    images = torch.tensor([[[[-0.5, 1.5], [2.0, 0.0]]]], requires_grad=True)
+    encoded = repeat_static_input(images, 3)
+    assert encoded.shape == (1, 1, 2, 2, 3)
+    assert encoded.dtype == images.dtype and encoded.device == images.device
+    for step in range(3):
+        torch.testing.assert_close(encoded[..., step], images)
+    encoded.sum().backward()
+    torch.testing.assert_close(images.grad, torch.full_like(images, 3))
+
+
+def test_repeat_static_input_rejects_invalid_shape_and_steps():
+    with pytest.raises(ValueError, match="shape"):
+        repeat_static_input(torch.zeros(28, 28), 5)
+    for steps in (0, -1, True):
+        with pytest.raises(ValueError, match="steps"):
+            repeat_static_input(torch.zeros(1, 1, 2, 2), steps)
+
+
+def test_repeat_static_input_supports_fullgraph_compilation():
+    images = torch.randn(2, 1, 4, 4)
+    compiled = torch.compile(repeat_static_input, backend="eager", fullgraph=True)
+    torch.testing.assert_close(compiled(images, 5), repeat_static_input(images, 5))
 
 
 def test_encodings_preserve_background_and_intensity_order():
