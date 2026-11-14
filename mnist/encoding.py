@@ -1,48 +1,50 @@
-"""Prepare static images for SNN input over multiple time steps."""
+"""Encode batches of MNIST images as time-varying SNN inputs."""
 
-import numpy as np
 import torch
 
 
-def repeat_static_input(images: torch.Tensor, steps: int) -> torch.Tensor:
-    """Repeat a batch of continuous images as [batch, channel, height, width, time]."""
+def encode_input(images, steps, method="repeat", *, generator=None, period=None):
+    """Return [batch, channel, height, width, time] on the input device.
+
+    ``repeat`` preserves continuous values. The three spike encodings require
+    floating-point intensities in [0, 1] and return zeros and ones in the input
+    dtype. For reproducible Rate samples, provide a generator on the same device.
+    Phase coding requires an explicit period in time steps. Spike encoding is
+    nondifferentiable with respect to the image; downstream weights can still train.
+    """
     if images.ndim != 4:
         raise ValueError("images must have shape [batch, channel, height, width]")
     if not isinstance(steps, int) or isinstance(steps, bool) or steps < 1:
         raise ValueError("steps must be a positive integer")
-    return images.unsqueeze(-1).repeat(1, 1, 1, 1, steps)
+    if method == "repeat":
+        return images.unsqueeze(-1).repeat(1, 1, 1, 1, steps)
+    if method not in ("rate", "latency", "phase"):
+        raise ValueError(f"unknown encoding method: {method}")
+    if not images.is_floating_point():
+        raise ValueError("spike encoding requires floating-point intensities")
+    if not torch.all(torch.isfinite(images) & (images >= 0) & (images <= 1)):
+        raise ValueError("spike encoding requires finite intensities in [0, 1]")
 
-
-def _validate(image, steps):
-    image = np.asarray(image, dtype=np.float32)
-    if (
-        image.ndim != 2
-        or not np.isfinite(image).all()
-        or np.any((image < 0) | (image > 1))
-    ):
-        raise ValueError("image must be a finite 2D array with intensities in [0, 1]")
-    if not isinstance(steps, int) or steps < 1:
-        raise ValueError("steps must be a positive integer")
-    return image
-
-
-def rate_encode(image, steps, rng):
-    """Encode one [height, width] image as [time, height, width] spikes."""
-    image = _validate(image, steps)
-    return rng.random((steps, *image.shape)) < image
-
-
-def latency_encode(image, steps):
-    """Encode one image with at most one spike per nonzero pixel."""
-    image = _validate(image, steps)
-    times = np.rint((1 - image) * (steps - 1)).astype(int)
-    return (np.arange(steps)[:, None, None] == times) & (image > 0)
-
-
-def phase_encode(image, steps, period):
-    """Encode one image as repeating spikes with intensity-dependent phase."""
-    image = _validate(image, steps)
-    if not isinstance(period, int) or not 1 <= period <= steps:
-        raise ValueError("period must be an integer between 1 and steps")
-    phases = np.rint((1 - image) * (period - 1)).astype(int)
-    return (np.arange(steps)[:, None, None] % period == phases) & (image > 0)
+    if method == "rate":
+        samples = torch.rand(
+            (*images.shape, steps),
+            dtype=images.dtype,
+            device=images.device,
+            generator=generator,
+        )
+        spikes = samples < images.unsqueeze(-1)
+    else:
+        if method == "phase":
+            if (
+                not isinstance(period, int)
+                or isinstance(period, bool)
+                or not 1 <= period <= steps
+            ):
+                raise ValueError("period must be an integer between 1 and steps")
+            window = period
+        else:
+            window = steps
+        times = ((1 - images) * (window - 1)).round().to(torch.long)
+        indices = torch.arange(steps, device=images.device) % window
+        spikes = (indices == times.unsqueeze(-1)) & (images > 0).unsqueeze(-1)
+    return spikes.to(images.dtype)
