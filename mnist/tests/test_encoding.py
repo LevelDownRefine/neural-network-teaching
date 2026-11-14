@@ -17,7 +17,7 @@ def test_repeat_preserves_values_shape_and_gradients():
     torch.testing.assert_close(images.grad, torch.full_like(images, 3))
 
 
-@pytest.mark.parametrize("method", ["repeat", "rate", "latency", "phase"])
+@pytest.mark.parametrize("method", ["repeat", "rate", "latency", "phase", "rank_order"])
 def test_encoders_share_batch_shape_and_dtype(method):
     images = torch.tensor([[[[0.0, 0.5, 1.0]]], [[[1.0, 0.5, 0.0]]]])
     kwargs = {"period": 5} if method == "phase" else {}
@@ -50,7 +50,9 @@ def test_spike_encodings_preserve_background_and_intensity_order():
     assert rate[0, 0, 0, 1].mean().item() == pytest.approx(0.5, abs=0.02)
 
 
-@pytest.mark.parametrize("method", ["rate", "latency", "phase"])
+@pytest.mark.parametrize(
+    "method", ["rate", "latency", "phase", "rank_order", "population"]
+)
 @pytest.mark.parametrize("value", [-0.1, 1.1, float("nan"), float("inf")])
 def test_spike_encodings_reject_invalid_intensity(method, value):
     with pytest.raises(ValueError, match="intensities"):
@@ -71,6 +73,48 @@ def test_encoding_rejects_invalid_arguments():
             encode_input(images, 10, "phase", period=period)
     with pytest.raises(ValueError, match="floating-point"):
         encode_input(images.to(torch.int64), 10, "rate")
+    for size in (0, 1, True):
+        with pytest.raises(ValueError, match="population_size"):
+            encode_input(images, 10, "population", population_size=size)
+    for width in (0, -1, float("nan"), True):
+        with pytest.raises(ValueError, match="population_width"):
+            encode_input(images, 10, "population", population_width=width)
+
+
+def test_rank_order_preserves_ties_and_depends_on_rank_not_magnitude():
+    images = torch.tensor([[[[0.0, 0.2, 0.6, 1.0]]], [[[0.0, 0.1, 0.2, 0.3]]]])
+    encoded = encode_input(images, 12, "rank_order")
+    torch.testing.assert_close(encoded[0], encoded[1])
+    assert encoded[:, :, :, 0].sum() == 0
+    assert encoded[0, 0, 0, 3].argmax() == 0
+    assert encoded[0, 0, 0, 2].argmax() == 4
+    assert encoded[0, 0, 0, 1].argmax() == 8
+    ties = encode_input(torch.tensor([[[[0.0, 0.5, 0.5, 1.0]]]]), 8, "rank_order")
+    torch.testing.assert_close(ties[0, 0, 0, 1], ties[0, 0, 0, 2])
+    assert encode_input(torch.zeros(1, 1, 2, 2), 8, "rank_order").sum() == 0
+
+
+def test_population_coding_adds_channels_and_responds_to_preferred_value():
+    images = torch.tensor([[[[0.0, 0.5, 1.0]]]])
+    kwargs = {"method": "population", "population_size": 3}
+    encoded = encode_input(
+        images, 100, generator=torch.Generator().manual_seed(42), **kwargs
+    )
+    again = encode_input(
+        images, 100, generator=torch.Generator().manual_seed(42), **kwargs
+    )
+    assert encoded.shape == (1, 3, 1, 3, 100)
+    assert encoded.dtype == images.dtype and encoded.device == images.device
+    assert ((encoded == 0) | (encoded == 1)).all()
+    assert torch.equal(encoded, again)
+    assert encoded[:, :, :, 0].sum() == 0
+    assert encoded[0, 1, 0, 1].sum() == 100
+    assert encoded[0, 2, 0, 2].sum() == 100
+    multi_channel = torch.tensor([[[[0.0]], [[1.0]]]])
+    result = encode_input(multi_channel, 10, "population")
+    assert result.shape == (1, 6, 1, 1, 10)
+    assert result[0, :3].sum() == 0
+    assert result[0, 5].sum() == 10
 
 
 def test_repeat_supports_fullgraph_compilation():
@@ -79,7 +123,7 @@ def test_repeat_supports_fullgraph_compilation():
     torch.testing.assert_close(compiled(images, 5), encode_input(images, 5))
 
 
-def test_all_encodings_feed_existing_tssl_model(monkeypatch):
+def test_single_channel_encodings_feed_existing_tssl_model(monkeypatch):
     pytest.importorskip("snntorch")
     tssl_dir = Path(__file__).resolve().parents[1] / "models" / "tssl"
     monkeypatch.syspath_prepend(str(tssl_dir))
@@ -93,10 +137,13 @@ def test_all_encodings_feed_existing_tssl_model(monkeypatch):
     images = torch.rand(2, 1, 28, 28)
     steps = config["Network"]["n_steps"]
     with torch.no_grad():
+        population = encode_input(images, steps, "population")
+        assert population.shape[1] == 3
+        assert config["Layers"]["conv_1"]["in_channels"] == 1
         baseline = network.forward(
             images.unsqueeze(-1).repeat(1, 1, 1, 1, steps), 0, False
         )
-        for method in ("repeat", "rate", "latency", "phase"):
+        for method in ("repeat", "rate", "latency", "phase", "rank_order"):
             kwargs = {"period": steps} if method == "phase" else {}
             output = network.forward(
                 encode_input(images, steps, method, **kwargs), 0, False
