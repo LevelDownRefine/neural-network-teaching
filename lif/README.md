@@ -10,7 +10,7 @@ uv sync --locked --extra cpu
 
 在 VS Code 等支持 Jupyter 的编辑器中选择项目的 `.venv` 内核。
 
-## 桌面交互
+## PySide6 桌面交互
 
 使用 uv 管理的独立 Python 3.12 环境安装并启动，避免已有 Conda 环境中的 Qt DLL 冲突：
 
@@ -32,3 +32,13 @@ GUI 使用 Rust 前向循环；Notebook 和训练仍可使用 snnTorch。安装 
 测试分三层：cargo test 验证核心阈值、重置、不应期和非法输入；pytest 对照 snnTorch 的恒定、正弦及随机输入，逐元素检查膜电位和脉冲；GUI 测试检查 Python 接口及异步显示。性能使用 release 构建独立测量，不用机器相关的耗时阈值判断 CI 是否通过。
 
 本机 20,000 步实验，Rust Python 接口端到端约 1.2–1.3 ms；相同输入下原实现约 3.3–3.5 s。此处仅比较仿真，不包含绘图，也不代表其他硬件的耗时。
+
+## Rust 原生界面
+
+~~~bash
+cargo run --release --locked --manifest-path lif/gui-rust/Cargo.toml
+~~~
+
+程序名为 LIF，采用中文深色界面。参数改变后立即更新四联图和统计，计算与界面均为 Rust，无需 Python 环境。鼠标悬停可查看图上数值；导出会在 lif/output 下建立独立目录，保存 trace.csv 和 parameters.json，不覆盖已有结果。
+
+Windows 构建后可直接运行 lif/gui-rust/target/release/lif.exe。编译需要 Rust 1.88 或更新版本。

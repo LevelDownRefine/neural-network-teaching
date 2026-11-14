@@ -4,6 +4,8 @@ use pyo3::exceptions::PyValueError;
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 
+pub mod experiment;
+
 pub type Trace = (Vec<f32>, Vec<u8>);
 
 pub fn simulate_core(
@@ -87,9 +89,22 @@ fn simulate(
 }
 
 #[cfg(feature = "python")]
+type ExperimentTrace = (Vec<f32>, Vec<f32>, Vec<u8>, Vec<f64>);
+
+#[cfg(feature = "python")]
+#[pyfunction]
+fn run_experiment(py: Python<'_>, parameters: experiment::Parameters) -> PyResult<ExperimentTrace> {
+    let result = py
+        .detach(move || experiment::Experiment::run(&parameters))
+        .map_err(PyValueError::new_err)?;
+    Ok((result.current, result.voltage, result.spikes, result.rate))
+}
+
+#[cfg(feature = "python")]
 #[pymodule]
 fn lif_native(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(simulate, module)?)?;
+    module.add_function(wrap_pyfunction!(run_experiment, module)?)?;
     Ok(())
 }
 

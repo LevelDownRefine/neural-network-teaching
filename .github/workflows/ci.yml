@@ -32,6 +32,14 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: uv sync --locked --extra cpu --extra gui --dev
       - run: uv run --locked --extra cpu --extra gui pytest -q lif/tests
+      - run: cargo fmt --manifest-path lif/gui-rust/Cargo.toml --check
+      - run: cargo clippy --locked --manifest-path lif/gui-rust/Cargo.toml --all-targets -- -D warnings
+      - run: cargo test --locked --manifest-path lif/gui-rust/Cargo.toml
+      - run: cargo build --release --locked --manifest-path lif/gui-rust/Cargo.toml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lif-windows
+          path: lif/gui-rust/target/release/lif.exe
 
   rust:
     runs-on: ubuntu-latest

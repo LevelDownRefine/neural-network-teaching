@@ -73,3 +73,36 @@ def test_exact_threshold_and_refractory():
     voltage, spikes = native.simulate([1.5] * 4, 0, 10, -65, 15, 2)
     assert voltage == [-65] * 4
     assert spikes == bytes([1, 0, 0, 1])
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {},
+        {"mode": "sinusoidal"},
+        {"mode": "sinusoidal", "frequency": 50, "tau": 7},
+        {"current": 0},
+        {"threshold": -55},
+        {"refractory": 0},
+    ],
+)
+def test_native_frontend_pipeline_matches_reference(change):
+    from dataclasses import asdict
+
+    p = replace(SimulationParameters(duration=200), **change)
+    fields = asdict(p)
+    fields["sinusoidal"] = fields.pop("mode") == "sinusoidal"
+    fields.pop("rest")
+    fields.pop("dt")
+    current, voltage, spikes, rate = native.run_experiment(fields)
+    reference = simulate_experiment(p)
+    np.testing.assert_array_equal(
+        np.asarray(current, dtype=np.float32), reference["current"].astype(np.float32)
+    )
+    np.testing.assert_array_equal(
+        np.asarray(voltage, dtype=np.float32), reference["voltage"]
+    )
+    np.testing.assert_array_equal(
+        np.frombuffer(spikes, dtype=np.uint8), reference["spikes"]
+    )
+    np.testing.assert_array_equal(rate, reference["rate"])
