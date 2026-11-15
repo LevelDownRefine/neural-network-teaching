@@ -1,4 +1,4 @@
-"""Evaluate the published SpikCommander checkpoint on the official SHD test set."""
+"""Evaluate the published SpikCommander checkpoint at several SHD input bin widths."""
 
 import argparse
 import ast
@@ -31,6 +31,7 @@ AUTHOR_FILES = {
     WEIGHT_PATH: "55f1ac64dd134846f4669c788d1bd9be160c7e24",
 }
 KEY_PREFIXES = {"spike_embed.": "see.", "blocks.0.mlp.": "blocks.0.scrmlp."}
+INPUT_WINDOWS_MS = (5, 10, 20)
 
 
 def git_blob_hash(path):
@@ -140,28 +141,40 @@ def evaluate(test_file, author, library, device):
     model.load_state_dict(weights, strict=True)
     model.eval()
 
-    correct = samples = 0
+    window_results = []
     with h5py.File(test_file, "r") as data:
         labels = data["labels"][:].astype(np.int64)
         if len(labels) != 2264 or np.unique(labels).size != 20:
             raise ValueError("Expected the complete 20-class official SHD test split")
         ordered = np.argsort(labels, kind="stable")
-        for start in range(0, len(ordered), config.batch_size):
-            indices = ordered[start : start + config.batch_size]
-            frames = [
-                count_frames(
-                    data["spikes/times"][i],
-                    data["spikes/units"][i],
-                    config.time_step,
-                    config.n_bins,
-                )
-                for i in indices
-            ]
-            target = torch.from_numpy(labels[indices]).to(device)
-            correct += int(predict(model, frames, device).eq(target).sum().item())
-            functional.reset_net(model)
-            samples += len(indices)
+        for window_ms in INPUT_WINDOWS_MS:
+            correct = 0
+            for start in range(0, len(ordered), config.batch_size):
+                indices = ordered[start : start + config.batch_size]
+                frames = [
+                    count_frames(
+                        data["spikes/times"][i],
+                        data["spikes/units"][i],
+                        window_ms,
+                        config.n_bins,
+                    )
+                    for i in indices
+                ]
+                target = torch.from_numpy(labels[indices]).to(device)
+                correct += int(predict(model, frames, device).eq(target).sum().item())
+                functional.reset_net(model)
+            window_results.append(
+                {
+                    "input_bin_ms": window_ms,
+                    "correct": correct,
+                    "samples": len(labels),
+                    "accuracy": correct / len(labels),
+                }
+            )
 
+    baseline = next(
+        row for row in window_results if row["input_bin_ms"] == config.time_step
+    )
     return {
         "model": "SpikCommander (1L-8-128)",
         "commit": MODEL_REVISION,
@@ -169,13 +182,11 @@ def evaluate(test_file, author, library, device):
         "checkpoint": WEIGHT,
         "checkpoint_sha256": file_digest(checkpoint),
         "parameters": sum(p.numel() for p in model.parameters()),
-        "input_bin_ms": config.time_step,
         "input_channels": 700 // config.n_bins,
         "batch_size": config.batch_size,
         "order": "label, then HDF5 sample index",
-        "correct": correct,
-        "samples": samples,
-        "accuracy": correct / samples,
+        **baseline,
+        "window_results": window_results,
         "device": str(device),
         "neuron_backend": config.backend,
         "torch_version": str(torch.__version__),
@@ -210,9 +221,12 @@ def main():
         temporary.replace(out / "spikcommander.json")
     finally:
         temporary.unlink(missing_ok=True)
-    print(
-        f"Top-1 accuracy: {metrics['accuracy']:.2%} ({metrics['correct']:,} / {metrics['samples']:,})"
-    )
+    for row in metrics["window_results"]:
+        print(
+            f"{row['input_bin_ms']:2d} ms  Top-1 accuracy: {row['accuracy']:.2%} "
+            f"({row['correct']:,} / {row['samples']:,})",
+            flush=True,
+        )
 
 
 if __name__ == "__main__":
