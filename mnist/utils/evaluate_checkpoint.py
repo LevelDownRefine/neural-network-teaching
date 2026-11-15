@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 import torch
+from encoding import encode_input
 from models.m5 import ModelM5
 from models.tssl_cnn import TSSLCNN
 from torch import nn
@@ -40,7 +41,7 @@ def load_predictor(model_name, weights, device):
         net.eval()
 
         def predict(images):
-            x = images.to(device).unsqueeze(-1).repeat(1, 1, 1, 1, nc["n_steps"])
+            x = encode_input(images.to(device), nc["n_steps"])
             return (
                 net.forward(x, checkpoint["epoch"] - 1, False)
                 .sum(dim=4)
