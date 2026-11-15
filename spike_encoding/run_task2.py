@@ -5,7 +5,6 @@ import csv
 import json
 import subprocess
 import sys
-import time
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -83,34 +82,20 @@ def write_report(rows, folder):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--epochs", type=int, default=100)
+    parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument("--batch-size", type=int, default=20)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--phase-period", type=int, default=20)
-    parser.add_argument(
-        "--wait-first",
-        action="store_true",
-        help="wait for an already-running first experiment",
-    )
     args = parser.parse_args()
     if min(args.epochs, args.batch_size, args.phase_period) < 1:
         parser.error("epochs, batch size, and phase period must be positive")
     folder = RESULTS / f"snntorch_task2_grid_seed{args.seed}"
     folder.mkdir(parents=True, exist_ok=True)
     rows = []
-    for method in METHODS:
-        for steps in STEPS:
+    for steps in STEPS:
+        for method in METHODS:
             path = experiment_path(method, steps, args.seed)
             metrics = path / "metrics.json"
-            if args.wait_first and (method, steps) == (METHODS[0], STEPS[0]):
-                print(
-                    f"Waiting for the existing {method}/{steps} experiment", flush=True
-                )
-                while not metrics.exists():
-                    latest = path / "latest.pt"
-                    if latest.exists() and time.time() - latest.stat().st_mtime > 3600:
-                        raise RuntimeError(f"No checkpoint update for an hour: {path}")
-                    time.sleep(30)
             if not metrics.exists():
                 tag = f"task2_{method}_{steps}_seed{args.seed}"
                 cmd = [
