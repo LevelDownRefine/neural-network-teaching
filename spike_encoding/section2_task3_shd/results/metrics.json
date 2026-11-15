@@ -1,0 +1,153 @@
+{
+  "config": {
+    "epochs": 10,
+    "train_size": 3000,
+    "valid_size": 500,
+    "test_size": 500,
+    "batch_size": 128,
+    "steps": 50,
+    "bin_ms": 20,
+    "seed": 42
+  },
+  "dataset_sizes": {
+    "train": 8156,
+    "test": 2264
+  },
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 2.9614523995717366,
+      "train_accuracy": 0.066,
+      "validation": {
+        "accuracy": 0.11,
+        "correct": 55,
+        "samples": 500,
+        "mean_input_spikes_per_sample": 4344.334,
+        "mean_hidden_spikes_per_sample": 904.182
+      }
+    },
+    {
+      "epoch": 2,
+      "train_loss": 2.8567491772969564,
+      "train_accuracy": 0.124,
+      "validation": {
+        "accuracy": 0.186,
+        "correct": 93,
+        "samples": 500,
+        "mean_input_spikes_per_sample": 4344.334,
+        "mean_hidden_spikes_per_sample": 1074.212
+      }
+    },
+    {
+      "epoch": 3,
+      "train_loss": 2.711289513905843,
+      "train_accuracy": 0.21566666666666667,
+      "validation": {
+        "accuracy": 0.234,
+        "correct": 117,
+        "samples": 500,
+        "mean_input_spikes_per_sample": 4344.334,
+        "mean_hidden_spikes_per_sample": 1232.116
+      }
+    },
+    {
+      "epoch": 4,
+      "train_loss": 2.567336154937744,
+      "train_accuracy": 0.256,
+      "validation": {
+        "accuracy": 0.25,
+        "correct": 125,
+        "samples": 500,
+        "mean_input_spikes_per_sample": 4344.334,
+        "mean_hidden_spikes_per_sample": 1372.236
+      }
+    },
+    {
+      "epoch": 5,
+      "train_loss": 2.4478361409505207,
+      "train_accuracy": 0.2966666666666667,
+      "validation": {
+        "accuracy": 0.312,
+        "correct": 156,
+        "samples": 500,
+        "mean_input_spikes_per_sample": 4344.334,
+        "mean_hidden_spikes_per_sample": 1481.862
+      }
+    },
+    {
+      "epoch": 6,
+      "train_loss": 2.344295318603516,
+      "train_accuracy": 0.333,
+      "validation": {
+        "accuracy": 0.378,
+        "correct": 189,
+        "samples": 500,
+        "mean_input_spikes_per_sample": 4344.334,
+        "mean_hidden_spikes_per_sample": 1561.592
+      }
+    },
+    {
+      "epoch": 7,
+      "train_loss": 2.2546069456736246,
+      "train_accuracy": 0.38166666666666665,
+      "validation": {
+        "accuracy": 0.386,
+        "correct": 193,
+        "samples": 500,
+        "mean_input_spikes_per_sample": 4344.334,
+        "mean_hidden_spikes_per_sample": 1676.812
+      }
+    },
+    {
+      "epoch": 8,
+      "train_loss": 2.174605154037476,
+      "train_accuracy": 0.404,
+      "validation": {
+        "accuracy": 0.41,
+        "correct": 205,
+        "samples": 500,
+        "mean_input_spikes_per_sample": 4344.334,
+        "mean_hidden_spikes_per_sample": 1703.786
+      }
+    },
+    {
+      "epoch": 9,
+      "train_loss": 2.0984492956797283,
+      "train_accuracy": 0.44966666666666666,
+      "validation": {
+        "accuracy": 0.41,
+        "correct": 205,
+        "samples": 500,
+        "mean_input_spikes_per_sample": 4344.334,
+        "mean_hidden_spikes_per_sample": 1771.212
+      }
+    },
+    {
+      "epoch": 10,
+      "train_loss": 2.028245275179545,
+      "train_accuracy": 0.45766666666666667,
+      "validation": {
+        "accuracy": 0.438,
+        "correct": 219,
+        "samples": 500,
+        "mean_input_spikes_per_sample": 4344.334,
+        "mean_hidden_spikes_per_sample": 1876.422
+      }
+    }
+  ],
+  "best_epoch": 10,
+  "test": {
+    "accuracy": 0.482,
+    "correct": 241,
+    "samples": 500,
+    "mean_input_spikes_per_sample": 4597.428,
+    "mean_hidden_spikes_per_sample": 1954.258
+  },
+  "device": "cpu",
+  "python": "3.11.9",
+  "torch": "2.15.0+cpu",
+  "snntorch": "1.0.0",
+  "numpy": "2.4.6",
+  "h5py": "3.16.0",
+  "encoding": "binary event presence per channel and time bin; events beyond the window are discarded"
+}
