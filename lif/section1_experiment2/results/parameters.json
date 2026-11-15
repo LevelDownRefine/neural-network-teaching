@@ -1,0 +1,41 @@
+{
+  "parameters": {
+    "mode": "constant",
+    "current": 2.0,
+    "amplitude": 0.8,
+    "frequency": 5.0,
+    "phase": 0.0,
+    "threshold": -50.0,
+    "rest": -65.0,
+    "tau": 20.0,
+    "resistance": 10.0,
+    "refractory": 2.0,
+    "dt": 0.1,
+    "duration": 2000.0
+  },
+  "currents_nA": [
+    0,
+    0.5,
+    1,
+    1.4,
+    1.49,
+    1.5,
+    1.51,
+    1.6,
+    1.8,
+    2,
+    2.5,
+    3,
+    4,
+    5,
+    8,
+    10
+  ],
+  "backend": "snntorch",
+  "python": "3.11.9",
+  "numpy": "2.4.6",
+  "torch": "2.15.0+cpu",
+  "snntorch": "1.0.0",
+  "platform": "Windows-10-10.0.26300-SP0",
+  "device": "cpu"
+}
