@@ -5,17 +5,9 @@
 - **模型**：采用 [TSSL-BP（Zhang 与 Li，NeurIPS 2020）](https://papers.nips.cc/paper/2020/hash/8bdb5058376143fa358981954e7626b8-Abstract.html) 的网络结构，各组参数量相同。
 - **数据**：MNIST 训练／验证集为 50,000／10,000，使用相同的数据增强、EMA 和 seed 42；按验证集准确率选模，在官方测试集评估。
 - **训练**：每组至少 20 轮，验证准确率连续 10 轮不提升时早停；部分实验手动停止，实际训练轮数不同。
-- **环境**：snnTorch 1.0.0；训练使用 RTX 5070 Ti Laptop GPU（Windows、PyTorch 2.11.0+cu128）、V100 或 A800（Linux、PyTorch 2.5.1+cu121）。
-- **推理时间**：统一在 Tesla V100 上使用 Inductor 和 batch size 20；预热后重复 10 次，取平均值。
+- **测试环境**：snnTorch 1.0.0；RTX 5070 Ti Laptop GPU（Windows、Python 3.12.10、PyTorch 2.11.0+cu128）、V100 和 A800（Linux、Python 3.10.12、PyTorch 2.5.1+cu121）。
 
-模型结构：
-
-```mermaid
-flowchart LR
-    Input["输入 1×28×28"] --> C1["卷积 1→15，5×5"] --> P1["池化 2×2"]
-    P1 --> C2["卷积 15→40，5×5"] --> P2["池化 2×2"]
-    P2 --> F1["全连接 640→300"] --> F2["全连接 300→10"] --> Output["10 类输出"]
-```
+![SNN 网络结构](figures/snn_architecture.png)
 
 ## 2. 时间步数
 
