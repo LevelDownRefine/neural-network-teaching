@@ -9,6 +9,8 @@
 
 网络结构见[原论文表 1](https://papers.nips.cc/paper/2020/file/8bdb5058376143fa358981954e7626b8-Paper.pdf#page=8)：`15C5-P2-40C5-P2-300`。
 
+![TSSL 结构脉冲神经网络](figures/snn_architecture.png)
+
 ## 2. 时间步数
 
 每种编码分别设置 10、20、50、100 个时间步。
