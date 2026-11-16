@@ -1,4 +1,4 @@
-"""Evaluate SpikCommander on SHD and reproduce the reported paper score."""
+"""Evaluate SpikCommander on SHD with event-anchored input windows."""
 
 import argparse
 import ast
@@ -93,24 +93,8 @@ def attach_forward_methods(backbone):
         layer.forward = namespace["forward"]
 
 
-def count_frames(times, units, bin_ms, channels_per_group):
-    """Match SpikingJelly's duration integration and the author's channel grouping."""
-    elapsed = 1000 * times
-    elapsed -= elapsed[0]
-    steps = int(np.ceil(elapsed[-1] / bin_ms))
-    frame_index = np.minimum((elapsed // bin_ms).astype(np.int64), steps - 1)
-    channels = 700 // channels_per_group
-    grouped_units = units.astype(np.int64) // channels_per_group
-    counts = np.bincount(
-        frame_index * channels + grouped_units, minlength=steps * channels
-    )
-    if counts.sum() != len(times):
-        raise RuntimeError("Integration changed the event count")
-    return torch.as_tensor(counts.reshape(steps, channels), dtype=torch.float32)
-
-
 def count_event_anchored_frames(times, units, bin_ms, channels_per_group):
-    """Match SpikingJelly's SHD bins from before the March 2024 fixed-grid change."""
+    """Match the legacy SpikingJelly SHD duration integration."""
     times_ms = 1000 * times
     channels = 700 // channels_per_group
     grouped_units = units.astype(np.int64) // channels_per_group
@@ -136,7 +120,7 @@ def predict(model, frames, device):
 
 
 @torch.inference_mode()
-def evaluate(test_file, author, library, device, *, paper_reproduction=False):
+def evaluate(test_file, author, library, device):
     sys.path[:0] = [str(library), str(author)]
     from best_config_SHD_former import Config
     from module import spikcommander_backbone
@@ -159,24 +143,19 @@ def evaluate(test_file, author, library, device, *, paper_reproduction=False):
     model.load_state_dict(weights, strict=True)
     model.eval()
 
-    windows = (config.time_step,) if paper_reproduction else INPUT_WINDOWS_MS
-    integrate = count_event_anchored_frames if paper_reproduction else count_frames
     window_results = []
     with h5py.File(test_file, "r") as data:
         labels = data["labels"][:].astype(np.int64)
         if len(labels) != 2264 or np.unique(labels).size != 20:
             raise ValueError("Expected the complete 20-class official SHD test split")
-        if paper_reproduction:
-            ordered = np.lexsort((np.arange(len(labels)).astype(str), labels))
-        else:
-            ordered = np.argsort(labels, kind="stable")
-        for window_ms in windows:
+        ordered = np.lexsort((np.arange(len(labels)).astype(str), labels))
+        for window_ms in INPUT_WINDOWS_MS:
             correct = 0
             batch_accuracies = []
             for start in range(0, len(ordered), config.batch_size):
                 indices = ordered[start : start + config.batch_size]
                 frames = [
-                    integrate(
+                    count_event_anchored_frames(
                         data["spikes/times"][i],
                         data["spikes/units"][i],
                         window_ms,
@@ -213,10 +192,8 @@ def evaluate(test_file, author, library, device, *, paper_reproduction=False):
         "parameters": sum(p.numel() for p in model.parameters()),
         "input_channels": 700 // config.n_bins,
         "batch_size": config.batch_size,
-        "order": "label, then lexical order of frame file names"
-        if paper_reproduction
-        else "label, then HDF5 sample index",
-        "binning": "event-anchored" if paper_reproduction else "fixed grid",
+        "order": "label, then lexical order of frame file names",
+        "binning": "event-anchored",
         **baseline,
         "window_results": window_results,
         "device": str(device),
@@ -237,13 +214,8 @@ def evaluate(test_file, author, library, device, *, paper_reproduction=False):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
-    parser.add_argument("--device", default="cpu")
+    parser.add_argument("--device", default="cuda")
     parser.add_argument("--threads", type=int, default=6)
-    parser.add_argument(
-        "--paper-reproduction",
-        action="store_true",
-        help="Use the verified 10 ms reproduction settings on CUDA.",
-    )
     args = parser.parse_args()
     out = args.out.resolve()
     test_file = out / "data" / "shd_test.h5"
@@ -253,9 +225,11 @@ def main():
         parser.error("--threads must be positive")
 
     device = torch.device(args.device)
-    if args.paper_reproduction:
-        if device.type != "cuda" or not torch.cuda.is_available():
-            parser.error("--paper-reproduction requires an available CUDA device.")
+    if device.type == "cuda":
+        if not torch.cuda.is_available():
+            parser.error(
+                "The selected PyTorch runtime does not have an available CUDA device."
+            )
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
         torch.backends.cudnn.allow_tf32 = True
@@ -266,35 +240,20 @@ def main():
     with TemporaryDirectory(dir=cache) as directory:
         library = Path(directory)
         unpack_spikingjelly(archive, library)
-        metrics = evaluate(
-            test_file,
-            author,
-            library,
-            device,
-            paper_reproduction=args.paper_reproduction,
-        )
+        metrics = evaluate(test_file, author, library, device)
 
-    output_name = (
-        "spikcommander_paper_reproduction.json"
-        if args.paper_reproduction
-        else "spikcommander.json"
-    )
     with NamedTemporaryFile(dir=out, suffix=".json", delete=False) as handle:
         temporary = Path(handle.name)
     try:
         temporary.write_text(json.dumps(metrics, indent=2), encoding="utf-8")
-        temporary.replace(out / output_name)
+        temporary.replace(out / "spikcommander_paper_reproduction.json")
     finally:
         temporary.unlink(missing_ok=True)
     for row in metrics["window_results"]:
         print(
-            f"{row['input_bin_ms']:2d} ms  Top-1 accuracy: {row['accuracy']:.2%} "
-            f"({row['correct']:,} / {row['samples']:,})",
+            f"{row['input_bin_ms']:2d} ms  Batch-averaged Top-1: "
+            f"{row['author_batch_average_accuracy']:.2%} ({row['correct']:,} / {row['samples']:,} correct)",
             flush=True,
-        )
-    if args.paper_reproduction:
-        print(
-            f"Top-1 accuracy averaged over batches: {metrics['author_batch_average_accuracy']:.2%}"
         )
 
 
