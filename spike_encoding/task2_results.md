@@ -5,7 +5,8 @@
 - **模型**：采用 [TSSL-BP（Zhang 与 Li，NeurIPS 2020）](https://papers.nips.cc/paper/2020/hash/8bdb5058376143fa358981954e7626b8-Abstract.html) 的网络结构，各组参数量相同。
 - **数据**：MNIST 训练／验证集为 50,000／10,000，使用相同的数据增强、EMA 和 seed 42；按验证集准确率选模，在官方测试集评估。
 - **训练**：每组至少 20 轮，验证准确率连续 10 轮不提升时早停；部分实验手动停止，实际训练轮数不同。
-- **测试环境**：snnTorch 1.0.0；RTX 5070 Ti Laptop GPU（Windows、Python 3.12.10、PyTorch 2.11.0+cu128）、V100 和 A800（Linux、Python 3.10.12、PyTorch 2.5.1+cu121）。
+- **训练环境**：snnTorch 1.0.0；RTX 5070 Ti Laptop GPU（Windows、Python 3.12.10、PyTorch 2.11.0+cu128）、V100 和 A800（Linux、Python 3.10.12、PyTorch 2.5.1+cu121）。
+- **性能测试环境**：同一张 Tesla V100-PCIE-32GB，Linux、Python 3.10.12、PyTorch 2.5.1+cu121、snnTorch 1.0.0；使用 Inductor，batch size 20。
 
 网络结构见[原论文表 1](https://papers.nips.cc/paper/2020/file/8bdb5058376143fa358981954e7626b8-Paper.pdf#page=8)：`15C5-P2-40C5-P2-300`。
 
