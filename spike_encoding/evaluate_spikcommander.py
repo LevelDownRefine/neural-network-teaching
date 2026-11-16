@@ -1,4 +1,4 @@
-"""Evaluate the published SpikCommander checkpoint at several SHD input bin widths."""
+"""Evaluate SpikCommander on SHD with event-anchored input windows."""
 
 import argparse
 import ast
@@ -93,20 +93,22 @@ def attach_forward_methods(backbone):
         layer.forward = namespace["forward"]
 
 
-def count_frames(times, units, bin_ms, channels_per_group):
-    """Match SpikingJelly's duration integration and the author's channel grouping."""
-    elapsed = 1000 * times
-    elapsed -= elapsed[0]
-    steps = int(np.ceil(elapsed[-1] / bin_ms))
-    frame_index = np.minimum((elapsed // bin_ms).astype(np.int64), steps - 1)
+def count_event_anchored_frames(times, units, bin_ms, channels_per_group):
+    """Match the legacy SpikingJelly SHD duration integration."""
+    times_ms = 1000 * times
     channels = 700 // channels_per_group
     grouped_units = units.astype(np.int64) // channels_per_group
-    counts = np.bincount(
-        frame_index * channels + grouped_units, minlength=steps * channels
-    )
+    frames = []
+    left = 0
+    while left < len(times_ms):
+        # The next unassigned event opens a window that includes its right endpoint.
+        right = int(np.searchsorted(times_ms, times_ms[left] + bin_ms, side="right"))
+        frames.append(np.bincount(grouped_units[left:right], minlength=channels))
+        left = right
+    counts = np.stack(frames)
     if counts.sum() != len(times):
         raise RuntimeError("Integration changed the event count")
-    return torch.as_tensor(counts.reshape(steps, channels), dtype=torch.float32)
+    return torch.as_tensor(counts, dtype=torch.float32)
 
 
 def predict(model, frames, device):
@@ -146,13 +148,14 @@ def evaluate(test_file, author, library, device):
         labels = data["labels"][:].astype(np.int64)
         if len(labels) != 2264 or np.unique(labels).size != 20:
             raise ValueError("Expected the complete 20-class official SHD test split")
-        ordered = np.argsort(labels, kind="stable")
+        ordered = np.lexsort((np.arange(len(labels)).astype(str), labels))
         for window_ms in INPUT_WINDOWS_MS:
             correct = 0
+            batch_accuracies = []
             for start in range(0, len(ordered), config.batch_size):
                 indices = ordered[start : start + config.batch_size]
                 frames = [
-                    count_frames(
+                    count_event_anchored_frames(
                         data["spikes/times"][i],
                         data["spikes/units"][i],
                         window_ms,
@@ -161,7 +164,11 @@ def evaluate(test_file, author, library, device):
                     for i in indices
                 ]
                 target = torch.from_numpy(labels[indices]).to(device)
-                correct += int(predict(model, frames, device).eq(target).sum().item())
+                batch_correct = int(
+                    predict(model, frames, device).eq(target).sum().item()
+                )
+                correct += batch_correct
+                batch_accuracies.append(batch_correct / len(indices))
                 functional.reset_net(model)
             window_results.append(
                 {
@@ -169,6 +176,7 @@ def evaluate(test_file, author, library, device):
                     "correct": correct,
                     "samples": len(labels),
                     "accuracy": correct / len(labels),
+                    "author_batch_average_accuracy": float(np.mean(batch_accuracies)),
                 }
             )
 
@@ -184,19 +192,29 @@ def evaluate(test_file, author, library, device):
         "parameters": sum(p.numel() for p in model.parameters()),
         "input_channels": 700 // config.n_bins,
         "batch_size": config.batch_size,
-        "order": "label, then HDF5 sample index",
+        "order": "label, then lexical order of frame file names",
+        "binning": "event-anchored",
         **baseline,
         "window_results": window_results,
         "device": str(device),
+        "gpu_name": torch.cuda.get_device_name(device)
+        if device.type == "cuda"
+        else None,
         "neuron_backend": config.backend,
         "torch_version": str(torch.__version__),
+        "cudnn_allow_tf32": torch.backends.cudnn.allow_tf32
+        if device.type == "cuda"
+        else None,
+        "cuda_matmul_allow_tf32": torch.backends.cuda.matmul.allow_tf32
+        if device.type == "cuda"
+        else None,
     }
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
-    parser.add_argument("--device", default="cpu")
+    parser.add_argument("--device", default="cuda")
     parser.add_argument("--threads", type=int, default=6)
     args = parser.parse_args()
     out = args.out.resolve()
@@ -206,25 +224,35 @@ def main():
     if args.threads < 1:
         parser.error("--threads must be positive")
 
+    device = torch.device(args.device)
+    if device.type == "cuda":
+        if not torch.cuda.is_available():
+            parser.error(
+                "The selected PyTorch runtime does not have an available CUDA device."
+            )
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.allow_tf32 = True
+        torch.backends.cuda.matmul.allow_tf32 = False
     torch.set_num_threads(args.threads)
     cache = out / "spikcommander_reference"
     author, archive = prepare_reference(cache)
     with TemporaryDirectory(dir=cache) as directory:
         library = Path(directory)
         unpack_spikingjelly(archive, library)
-        metrics = evaluate(test_file, author, library, torch.device(args.device))
+        metrics = evaluate(test_file, author, library, device)
 
     with NamedTemporaryFile(dir=out, suffix=".json", delete=False) as handle:
         temporary = Path(handle.name)
     try:
         temporary.write_text(json.dumps(metrics, indent=2), encoding="utf-8")
-        temporary.replace(out / "spikcommander.json")
+        temporary.replace(out / "spikcommander_paper_reproduction.json")
     finally:
         temporary.unlink(missing_ok=True)
     for row in metrics["window_results"]:
         print(
-            f"{row['input_bin_ms']:2d} ms  Top-1 accuracy: {row['accuracy']:.2%} "
-            f"({row['correct']:,} / {row['samples']:,})",
+            f"{row['input_bin_ms']:2d} ms  Batch-averaged Top-1: "
+            f"{row['author_batch_average_accuracy']:.2%} ({row['correct']:,} / {row['samples']:,} correct)",
             flush=True,
         )
 
