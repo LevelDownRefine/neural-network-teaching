@@ -2,11 +2,11 @@
 
 ## 1. 网络、数据与训练
 
-模型采用 [TSSL-BP（Zhang 与 Li，NeurIPS 2020）](https://papers.nips.cc/paper/2020/hash/8bdb5058376143fa358981954e7626b8-Abstract.html) 的 MNIST 网络结构：两层卷积和池化，后接 300 单元全连接层与 10 类输出层；神经元使用 snnTorch 实现。
-
-使用相同的 TSSL 结构、50,000／10,000 训练／验证集划分、数据增强和 EMA，比较 Rate、Latency、Phase 三种输入编码。实验使用 seed 42，按验证集准确率选择检查点，在 MNIST 官方测试集上评估。
-
-各组至少训练 20 轮，以验证准确率连续 10 轮未提升为早停条件；部分实验手动停止，各组实际训练轮数不同。
+- **模型**：采用 [TSSL-BP（Zhang 与 Li，NeurIPS 2020）](https://papers.nips.cc/paper/2020/hash/8bdb5058376143fa358981954e7626b8-Abstract.html) 的 MNIST 结构，两层卷积和池化后接 300 单元全连接层与 10 类输出层；各组参数量相同，神经元使用 snnTorch 1.0.0。
+- **数据**：MNIST 训练／验证集为 50,000／10,000，使用相同的数据增强、EMA 和 seed 42；按验证集准确率选模，在官方测试集评估。
+- **训练**：每组至少 20 轮，验证准确率连续 10 轮不提升时早停；部分实验手动停止，实际训练轮数不同。
+- **环境**：训练使用 RTX 5070 Ti Laptop GPU（Windows、PyTorch 2.11.0+cu128）、V100 或 A800（Linux、PyTorch 2.5.1+cu121）。
+- **推理时间**：统一在 Tesla V100 上使用 Inductor 和 batch size 20；预热后重复 10 次，取平均值。
 
 ## 2. 时间步数
 
