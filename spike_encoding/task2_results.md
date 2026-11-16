@@ -23,6 +23,8 @@
 | Latency | 99.05% | 99.27% | 98.33% | 95.57% |
 | Phase | 98.77% | 99.19% | 99.22% | 99.14% |
 
+![准确率与时间步](figures/accuracy_vs_steps.png)
+
 ### 3.2 脉冲数量
 
 每张测试图像的平均脉冲数：
@@ -35,6 +37,8 @@
 | Latency | 151 | 151 | 151 | 151 |
 | Phase | 105 | 151 | 407 | 756 |
 
+![输入层脉冲数量与时间步](figures/input_spikes_vs_steps.png)
+
 **第一隐藏层**
 
 | 编码 | 10 步 | 20 步 | 50 步 | 100 步 |
@@ -42,6 +46,10 @@
 | Rate | 5,316 | 9,396 | 20,974 | 37,257 |
 | Latency | 1,794 | 2,096 | 11,541 | 28,141 |
 | Phase | 1,932 | 2,173 | 6,076 | 9,327 |
+
+![第一隐藏层脉冲数量与时间步](figures/hidden_spikes_vs_steps.png)
+
+![准确率与输入脉冲数量](figures/accuracy_vs_spikes.png)
 
 ### 3.3 推理时间
 
@@ -55,13 +63,7 @@
 
 ## 4. 实验曲线
 
-![准确率与时间步](figures/accuracy_vs_steps.png)
-
-![输入层脉冲数量与时间步](figures/input_spikes_vs_steps.png)
-
-![第一隐藏层脉冲数量与时间步](figures/hidden_spikes_vs_steps.png)
-
-![准确率与输入脉冲数量](figures/accuracy_vs_spikes.png)
+见第 3 节各指标。
 
 ## 5. 结果分析
 
