@@ -7,7 +7,7 @@
 - **训练**：每组至少 20 轮，验证准确率连续 10 轮不提升时早停；部分实验手动停止，实际训练轮数不同。
 - **测试环境**：snnTorch 1.0.0；RTX 5070 Ti Laptop GPU（Windows、Python 3.12.10、PyTorch 2.11.0+cu128）、V100 和 A800（Linux、Python 3.10.12、PyTorch 2.5.1+cu121）。
 
-![SNN 网络结构](figures/snn_architecture.png)
+网络结构见[原论文表 1](https://papers.nips.cc/paper/2020/file/8bdb5058376143fa358981954e7626b8-Paper.pdf#page=8)：`15C5-P2-40C5-P2-300`。
 
 ## 2. 时间步数
 
