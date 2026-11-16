@@ -58,7 +58,9 @@ Latency／50 的时间使用第 63 轮检查点，准确率和脉冲数量使用
 
 ![准确率与时间步](figures/accuracy_vs_steps.png)
 
-![脉冲数量与时间步](figures/spikes_vs_steps.png)
+![输入层脉冲数量与时间步](figures/input_spikes_vs_steps.png)
+
+![第一隐藏层脉冲数量与时间步](figures/hidden_spikes_vs_steps.png)
 
 ![准确率与输入脉冲数量](figures/accuracy_vs_spikes.png)
 
