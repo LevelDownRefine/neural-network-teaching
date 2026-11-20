@@ -47,12 +47,12 @@ Delta 与固定版本 FLA 官方 Gated DeltaNet 参考函数比较每步读出�
 ```powershell
 uv run --locked python -m associative_memory.experiment1
 # 单次快速查看
-uv run --locked python -m associative_memory.experiment1 --seeds 42
+uv run --locked python -m associative_memory.experiment1 --seed 123
 ```
 
-默认20个独立种子，m=32，eta=0.5，遍历作业规定的15种(d,P)组合；每条配对只写入一次。每个组合重建当前种子的生成器，三种方法共享配对和写入顺序。
+默认固定种子123，m=32，eta=0.5，遍历作业规定的15种(d,P)组合；每条配对只写入一次。每个组合重建当前种子的生成器，三种方法共享配对和写入顺序。
 
-默认输出到 associative_memory/output/experiment1：逐次指标 metrics.csv、均值与样本标准差 summary.csv、参数 config.json，以及 accuracy.png、mse.png、weight_norm.png。正确率以 P/d 为横轴，MSE 和权重范数以 P 为横轴；阴影是跨种子的样本标准差，不是置信区间。
+默认输出到 associative_memory/output/experiment1：逐次指标 metrics.csv、参数 config.json，以及 accuracy.png、mse.png、weight_norm.png。正确率以 P/d 为横轴，MSE 和权重范数以 P 为横轴；单次运行，不绘制统计阴影。
 
 讨论时关注：Hebbian 检索含目标项与其他配对的串扰，增加 d 可减小独立随机线索的重叠，但权重存储增至 m*d 个标量（本实现 float64，每个8字节）。Delta 修正预测误差，两者权重范数的大小不能直接代替检索质量。零矩阵基线连续 MSE 恒为1，随机目标上的比特正确率在0.5附近波动。
 
