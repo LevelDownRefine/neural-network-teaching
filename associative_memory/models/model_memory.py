@@ -1,4 +1,4 @@
-"""Delta-rule associative memory."""
+"""Delta, Hebbian and no-write associative memory models."""
 
 from pathlib import Path
 
@@ -92,3 +92,16 @@ class ModelDelta(ModelBase):
                 raise ValueError("invalid saved learning rate")
             self.load_state_dict(state)
             self.eta = eta
+
+
+class ModelHebbian(ModelDelta):
+    def optimize_parameters(self):
+        k, v = self._training_pair()
+        self.W += self.eta * np.outer(v, k)
+
+
+class ModelZero(ModelDelta):
+    """No-write baseline, initialized at zero like the other models."""
+
+    def optimize_parameters(self):
+        self._training_pair()

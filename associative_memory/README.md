@@ -3,7 +3,7 @@
 公共模型使用 NumPy，命名参考 KAIR 的 ModelBase 接口。
 
 - `models/model_base.py`：仅声明公共接口，保持 KAIR 风格。
-- `models/model_delta.py`：实现数据输入、检索、权重快照、保存加载和 Delta 更新。
+- `models/model_memory.py`：实现数据输入、检索、权重快照、保存加载和 Delta 更新。
 - `ModelHebbian`：继承 `ModelDelta`，只重写 `optimize_parameters()`。
 - `ModelZero`：不写入的零矩阵基线。
 
