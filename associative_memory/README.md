@@ -33,3 +33,11 @@ results = model.current_results()
 快照不共享数组内存；磁盘 `save()` 另外保存学习率，`load()` 恢复它。
 
 目前完成公共模型；三个核心实验流程及图表尚未实现。
+
+## 单元测试
+
+```powershell
+uv run --locked --extra cpu pytest associative_memory/tests -q
+```
+
+Delta 与固定版本 FLA 官方 Gated DeltaNet 参考函数比较每步读出和最终权重：关闭遗忘（g=0），beta=eta，scale=1，状态转置为 W。覆盖两组随机种子、三种学习率和两种维数，并从非零权重开始。Hebbian 使用批量闭式解交叉验证；另测试零基线、快照、保存加载和检索不修改权重。参考源码及 MIT 许可证位于 tests/reference。
