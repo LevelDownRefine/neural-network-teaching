@@ -32,7 +32,7 @@ results = model.current_results()
 实验三使用 `state_dict()` 和 `load_state_dict()` 复制 A 训练完成后的权重。
 快照不共享数组内存；`reset()` 清零权重并清空当前输入与结果。
 
-目前完成公共模型；三个核心实验流程及图表尚未实现。
+已完成公共模型和实验一；实验二、三的正式结果输出尚未实现。
 
 ## 单元测试
 
@@ -41,3 +41,17 @@ uv run --locked --extra cpu pytest associative_memory/tests -q
 ```
 
 Delta 与固定版本 FLA 官方 Gated DeltaNet 参考函数比较每步读出和最终权重：关闭遗忘（g=0），beta=eta，scale=1，状态转置为 W。覆盖两组随机种子、三种学习率和两种维数，并从非零权重开始。Hebbian 使用批量闭式解交叉验证；另测试零基线、快照、重置和检索不修改权重。参考源码及 MIT 许可证位于 tests/reference。
+
+## 实验一：容量
+
+```powershell
+uv run --locked python -m associative_memory.experiment1
+# 单次快速查看
+uv run --locked python -m associative_memory.experiment1 --seeds 42
+```
+
+默认20个独立种子，m=32，eta=0.5，遍历作业规定的15种(d,P)组合；每条配对只写入一次。每个组合独立生成数据，三种方法共享配对和写入顺序。
+
+默认输出到 associative_memory/output/experiment1：逐次指标 metrics.csv、均值与样本标准差 summary.csv、参数 config.json，以及 accuracy.png、mse.png、weight_norm.png。正确率以 P/d 为横轴，MSE 和权重范数以 P 为横轴；阴影是跨种子的样本标准差，不是置信区间。
+
+讨论时关注：Hebbian 检索含目标项与其他配对的串扰，增加 d 可减小独立随机线索的重叠，但权重存储增至 m*d 个标量（本实现 float64，每个8字节）。Delta 修正预测误差，两者权重范数的大小不能直接代替检索质量。零矩阵基线连续 MSE 恒为1，随机目标上的比特正确率在0.5附近波动。
