@@ -1,7 +1,7 @@
-from .model_base import ModelBase
+from .model_delta import ModelDelta
 
 
-class ModelZero(ModelBase):
+class ModelZero(ModelDelta):
     """No-write baseline, initialized at zero like the other models."""
 
     def optimize_parameters(self):

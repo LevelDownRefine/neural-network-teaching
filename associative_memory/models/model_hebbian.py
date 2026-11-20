@@ -1,9 +1,9 @@
 import numpy as np
 
-from .model_base import ModelBase
+from .model_delta import ModelDelta
 
 
-class ModelHebbian(ModelBase):
+class ModelHebbian(ModelDelta):
     def optimize_parameters(self):
         k, v = self._training_pair()
         self.W += self.eta * np.outer(v, k)
