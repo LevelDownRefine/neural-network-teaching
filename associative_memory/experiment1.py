@@ -14,8 +14,8 @@ import numpy as np
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from .data import generate_pairs
 from .models import ModelDelta, ModelHebbian, ModelZero
-from .random import make_rng
 
 MODELS = {"Hebbian": ModelHebbian, "Delta": ModelDelta, "Zero": ModelZero}
 METRICS = ("accuracy", "mse", "weight_norm")
@@ -27,10 +27,8 @@ def run(seeds, dimensions=(32, 64, 128), counts=(8, 16, 32, 64, 128), m=32, eta=
     for seed in seeds:
         for d in dimensions:
             for p in counts:
-                rng = make_rng(seed)
-                keys = rng.choice([-1.0, 1.0], (p, d)) / np.sqrt(d)
-                values = rng.choice([-1.0, 1.0], (p, m))
-                order = rng.permutation(p)
+                rng = np.random.default_rng(seed)
+                keys, values, order = generate_pairs(rng, p, d, m)
                 for name, cls in MODELS.items():
                     model = cls(d=d, m=m, eta=eta)
                     for i in order:
@@ -144,7 +142,7 @@ def main():
         "eta": 0.5,
         "epochs": 1,
         "dtype": "float64",
-        "random_scheme": "make_rng(seed): numpy.default_rng; reset per condition",
+        "random_scheme": "numpy.default_rng(seed); reset per condition",
         "dispersion": "sample standard deviation across independent seeds",
     }
     (args.output / "config.json").write_text(
