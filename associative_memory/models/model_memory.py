@@ -1,7 +1,5 @@
 """Delta, Hebbian and no-write associative memory models."""
 
-from pathlib import Path
-
 import numpy as np
 
 from .model_base import ModelBase
@@ -62,7 +60,7 @@ class ModelDelta(ModelBase):
     def current_results(self):
         if self._results is None:
             raise RuntimeError("run test before requesting results")
-        return {key: value.copy() for key, value in self._results.items()}
+        return self._results
 
     def reset(self):
         self.W.fill(0)
@@ -77,21 +75,6 @@ class ModelDelta(ModelBase):
             raise ValueError("weights must be finite and match model dimensions")
         self.W[...] = weights
         self._data = self._results = None
-
-    def save(self, path):
-        """Save weights and hyperparameters to an NPZ file at the exact path."""
-        path = Path(path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("wb") as stream:
-            np.savez(stream, W=self.W, eta=self.eta)
-
-    def load(self, path):
-        with np.load(path, allow_pickle=False) as state:
-            eta = float(state["eta"])
-            if not np.isfinite(eta) or eta <= 0:
-                raise ValueError("invalid saved learning rate")
-            self.load_state_dict(state)
-            self.eta = eta
 
 
 class ModelHebbian(ModelDelta):

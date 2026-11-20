@@ -84,15 +84,17 @@ def test_hebbian_closed_form(eta):
 
 
 @pytest.mark.parametrize("cls", [ModelDelta, ModelHebbian, ModelZero])
-def test_snapshot_and_save_roundtrip(cls, tmp_path):
+def test_snapshot_and_reset(cls):
     model = cls(d=2, m=3, eta=0.25)
     model.feed_data({"k": [1.0, 0.0], "v": [-1.0, 1.0, -1.0]})
     model.optimize_parameters()
     state = model.state_dict()
     assert not np.shares_memory(state["W"], model.W)
-    model.save(tmp_path / "memory.npz")
     model.reset()
-    model.load(tmp_path / "memory.npz")
+    np.testing.assert_array_equal(model.W, np.zeros((3, 2)))
+    with pytest.raises(RuntimeError):
+        model.current_results()
+    model.load_state_dict(state)
     np.testing.assert_array_equal(model.W, state["W"])
     assert model.eta == 0.25
     before = model.W.copy()

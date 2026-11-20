@@ -22,9 +22,3 @@ class ModelBase:
 
     def load_state_dict(self, state):
         pass
-
-    def save(self, path):
-        pass
-
-    def load(self, path):
-        pass

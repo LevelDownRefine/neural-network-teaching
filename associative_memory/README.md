@@ -3,7 +3,7 @@
 公共模型使用 NumPy，命名参考 KAIR 的 ModelBase 接口。
 
 - `models/model_base.py`：仅声明公共接口，保持 KAIR 风格。
-- `models/model_memory.py`：实现数据输入、检索、权重快照、保存加载和 Delta 更新。
+- `models/model_memory.py`：实现数据输入、检索、权重快照、重置和 Delta 更新。
 - `ModelHebbian`：继承 `ModelDelta`，只重写 `optimize_parameters()`。
 - `ModelZero`：不写入的零矩阵基线。
 
@@ -30,7 +30,7 @@ results = model.current_results()
 
 多轮训练、随机顺序、遮挡和回放由后续实验脚本控制。评估指标和数据生成也放在模型外。
 实验三使用 `state_dict()` 和 `load_state_dict()` 复制 A 训练完成后的权重。
-快照不共享数组内存；磁盘 `save()` 另外保存学习率，`load()` 恢复它。
+快照不共享数组内存；`reset()` 清零权重并清空当前输入与结果。
 
 目前完成公共模型；三个核心实验流程及图表尚未实现。
 
@@ -40,4 +40,4 @@ results = model.current_results()
 uv run --locked --extra cpu pytest associative_memory/tests -q
 ```
 
-Delta 与固定版本 FLA 官方 Gated DeltaNet 参考函数比较每步读出和最终权重：关闭遗忘（g=0），beta=eta，scale=1，状态转置为 W。覆盖两组随机种子、三种学习率和两种维数，并从非零权重开始。Hebbian 使用批量闭式解交叉验证；另测试零基线、快照、保存加载和检索不修改权重。参考源码及 MIT 许可证位于 tests/reference。
+Delta 与固定版本 FLA 官方 Gated DeltaNet 参考函数比较每步读出和最终权重：关闭遗忘（g=0），beta=eta，scale=1，状态转置为 W。覆盖两组随机种子、三种学习率和两种维数，并从非零权重开始。Hebbian 使用批量闭式解交叉验证；另测试零基线、快照、重置和检索不修改权重。参考源码及 MIT 许可证位于 tests/reference。
