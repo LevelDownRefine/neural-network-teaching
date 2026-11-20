@@ -55,3 +55,9 @@ uv run --locked python -m associative_memory.experiment1 --seeds 42
 默认输出到 associative_memory/output/experiment1：逐次指标 metrics.csv、均值与样本标准差 summary.csv、参数 config.json，以及 accuracy.png、mse.png、weight_norm.png。正确率以 P/d 为横轴，MSE 和权重范数以 P 为横轴；阴影是跨种子的样本标准差，不是置信区间。
 
 讨论时关注：Hebbian 检索含目标项与其他配对的串扰，增加 d 可减小独立随机线索的重叠，但权重存储增至 m*d 个标量（本实现 float64，每个8字节）。Delta 修正预测误差，两者权重范数的大小不能直接代替检索质量。零矩阵基线连续 MSE 恒为1，随机目标上的比特正确率在0.5附近波动。
+
+## 随机数管理
+
+所有正式实验通过 random.py 的 make_rng(seed, experiment, purpose, *coordinates) 创建随机流。相同身份可复现，不依赖调用顺序；不同用途独立。固定使用 PCG64，名称通过 SHA256 稳定编码，不使用 Python hash。
+
+实验一分开 data 和 order；实验二可用 masks，实验三可用 buffer 和 replay。方法间公平比较时先生成共享数据或顺序，再传给模型。相同参数每次调用会从随机流起点重建，应保留返回的 rng 持续抽样。随机方案变更后实验一结果已重新生成，旧结果不再逐项一致。
