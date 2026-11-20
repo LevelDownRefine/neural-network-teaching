@@ -50,7 +50,7 @@ uv run --locked python -m associative_memory.experiment1
 uv run --locked python -m associative_memory.experiment1 --seeds 42
 ```
 
-默认20个独立种子，m=32，eta=0.5，遍历作业规定的15种(d,P)组合；每条配对只写入一次。每个组合独立生成数据，三种方法共享配对和写入顺序。
+默认20个独立种子，m=32，eta=0.5，遍历作业规定的15种(d,P)组合；每条配对只写入一次。每个组合重建当前种子的生成器，三种方法共享配对和写入顺序。
 
 默认输出到 associative_memory/output/experiment1：逐次指标 metrics.csv、均值与样本标准差 summary.csv、参数 config.json，以及 accuracy.png、mse.png、weight_norm.png。正确率以 P/d 为横轴，MSE 和权重范数以 P 为横轴；阴影是跨种子的样本标准差，不是置信区间。
 
@@ -58,6 +58,6 @@ uv run --locked python -m associative_memory.experiment1 --seeds 42
 
 ## 随机数管理
 
-所有正式实验通过 random.py 的 make_rng(seed, experiment, purpose, *coordinates) 创建随机流。相同身份可复现，不依赖调用顺序；不同用途独立。固定使用 PCG64，名称通过 SHA256 稳定编码，不使用 Python hash。
-
-实验一分开 data 和 order；实验二可用 masks，实验三可用 buffer 和 replay。方法间公平比较时先生成共享数据或顺序，再传给模型。相同参数每次调用会从随机流起点重建，应保留返回的 rng 持续抽样。随机方案变更后实验一结果已重新生成，旧结果不再逐项一致。
+通过 `random.py` 的 `make_rng(seed)` 创建 NumPy 随机数生成器。
+实验一每个参数组合重新用当前 seed 创建生成器，再依次生成数据与写入顺序；三种方法共享这些输入。同一种子下不同参数组合不保证统计独立。不同重复使用不同种子。
+后续实验也由脚本创建生成器、预先生成共享数据或顺序。相同种子每次调用都会从起点开始，应保留返回的 rng 持续抽样。

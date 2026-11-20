@@ -22,15 +22,15 @@ METRICS = ("accuracy", "mse", "weight_norm")
 
 
 def run(seeds, dimensions=(32, 64, 128), counts=(8, 16, 32, 64, 128), m=32, eta=0.5):
-    """Each (seed, d, P) is independent; methods share pairs and order."""
+    """Each condition restarts its seed; methods share pairs and order."""
     rows = []
     for seed in seeds:
         for d in dimensions:
             for p in counts:
-                rng = make_rng(seed, "experiment1", "data", d, p, m)
+                rng = make_rng(seed)
                 keys = rng.choice([-1.0, 1.0], (p, d)) / np.sqrt(d)
                 values = rng.choice([-1.0, 1.0], (p, m))
-                order = make_rng(seed, "experiment1", "order", d, p, m).permutation(p)
+                order = rng.permutation(p)
                 for name, cls in MODELS.items():
                     model = cls(d=d, m=m, eta=eta)
                     for i in order:
@@ -144,7 +144,7 @@ def main():
         "eta": 0.5,
         "epochs": 1,
         "dtype": "float64",
-        "random_scheme": "make_rng v1: PCG64, SHA256 namespace, SeedSequence",
+        "random_scheme": "make_rng(seed): numpy.default_rng; reset per condition",
         "dispersion": "sample standard deviation across independent seeds",
     }
     (args.output / "config.json").write_text(
