@@ -26,8 +26,10 @@ class ModelBase(ABC):
         """
         if set(data) not in ({"k", "v"}, {"q"}):
             raise ValueError("provide exactly {k, v} or {q}")
-        copied = {key: np.array(value, dtype=self.W.dtype, copy=True)
-                  for key, value in data.items()}
+        copied = {
+            key: np.array(value, dtype=self.W.dtype, copy=True)
+            for key, value in data.items()
+        }
         if any(not np.isfinite(value).all() for value in copied.values()):
             raise ValueError("data must be finite")
         if "k" in copied:
