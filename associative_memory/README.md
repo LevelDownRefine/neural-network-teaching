@@ -55,3 +55,11 @@ ModelBase 继承 nn.Module，具体模型直接注册 FP32 权重 W。
 feed_data 校验并搬运 Tensor，保留输入计算图。init_train 设置训练模式。
 optimize_parameters 按作业规则更新权重。test 在 eval/no_grad 下检索，随后恢复 train。
 current_results 返回 detached CPU Tensor。state_dict()/load_state_dict(state) 保留独立权重快照。
+
+## Attention 对照
+
+ModelAttention 直接使用给定 Q/K/V 做单头 scaled dot-product attention，使用 PyTorch scaled_dot_product_attention，scale=1/sqrt(d)，dropout=0。它沿用 feed_data、optimize_parameters、test、current_results 和快照接口。每次 optimize_parameters 将一条 k/v 追加到记忆，重复写入也会保留重复条目。这里没有可学习的投影层或梯度优化器。
+
+快照包含 K 和 V，加载时可恢复不同长度的记忆；reset 清空记忆，空记忆检索报错。FP32 存储成本为 4*P*(d+m) 字节，Delta/Hebbian 为 4*m*d 字节。
+
+作业的线索向量已经单位归一化，标准 attention 缩放会使分数更小，softmax 更接近均匀分配。该对照用于检查接口及机制差异，实验比较需说明缩放和存储成本。
