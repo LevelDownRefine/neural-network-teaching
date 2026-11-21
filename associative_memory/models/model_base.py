@@ -3,8 +3,9 @@
 import torch
 
 
-class ModelBase:
+class ModelBase(torch.nn.Module):
     def __init__(self, device="cpu"):
+        super().__init__()
         self.device = torch.device(device)
 
     def init_train(self):
@@ -27,8 +28,8 @@ class ModelBase:
 
     def state_dict(self):
         return {
-            key: value.detach().clone() for key, value in self.netG.state_dict().items()
+            key: value.detach().clone() for key, value in super().state_dict().items()
         }
 
     def load_state_dict(self, state):
-        return self.netG.load_state_dict(state)
+        return super().load_state_dict(state)

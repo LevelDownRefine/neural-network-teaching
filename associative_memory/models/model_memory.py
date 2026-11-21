@@ -5,7 +5,6 @@ import math
 import torch
 
 from .model_base import ModelBase
-from .network_memory import MemoryNetwork
 
 
 class ModelDelta(ModelBase):
@@ -16,16 +15,14 @@ class ModelDelta(ModelBase):
         if not math.isfinite(eta) or eta <= 0:
             raise ValueError("eta must be finite and positive")
         self.d, self.m, self.eta = d, m, float(eta)
-        self.netG = MemoryNetwork(d, m).to(self.device)
+        self.register_buffer(
+            "W", torch.zeros(m, d, dtype=torch.float32, device=self.device)
+        )
         self._data = None
         self._results = None
 
-    @property
-    def W(self):
-        return self.netG.W
-
     def init_train(self):
-        self.netG.train()
+        self.train()
 
     def feed_data(self, data):
         """Accept {k, v} for a training pair or {q} for retrieval.
@@ -61,23 +58,19 @@ class ModelDelta(ModelBase):
     @torch.no_grad()
     def optimize_parameters(self):
         k, v = self._training_pair()
-        error = v - self.netG_forward()
-        self.netG.W += self.eta * torch.outer(error, k)
-
-    def netG_forward(self):
-        q = self._data["q"] if "q" in self._data else self._data["k"]
-        return self.netG(q)
+        error = v - self.W @ k
+        self.W += self.eta * torch.outer(error, k)
 
     @torch.no_grad()
     def test(self):
         """Retrieve without changing weights; zero output maps to +1."""
         if self._data is None or "q" not in self._data:
             raise RuntimeError("feed queries before test")
-        self.netG.eval()
+        self.eval()
         try:
-            z = self.netG_forward()
+            z = self._data["q"] @ self.W.T
         finally:
-            self.netG.train()
+            self.train()
         self._results = {"z": z, "v_hat": torch.where(z >= 0, 1, -1)}
 
     def current_results(self):
@@ -105,7 +98,7 @@ class ModelHebbian(ModelDelta):
     @torch.no_grad()
     def optimize_parameters(self):
         k, v = self._training_pair()
-        self.netG.W += self.eta * torch.outer(v, k)
+        self.W += self.eta * torch.outer(v, k)
 
 
 class ModelZero(ModelDelta):

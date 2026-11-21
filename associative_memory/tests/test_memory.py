@@ -171,26 +171,14 @@ def test_failed_load_preserves_weights_and_cached_results():
         model.test()
 
 
-def test_kair_controller_network_lifecycle():
-    from torch import nn
-
+def test_tensor_input_and_result_lifecycle():
     model = ModelDelta(d=2, m=1)
-    assert not isinstance(model, nn.Module)
-    assert isinstance(model.netG, nn.Module)
     model.init_train()
     q = torch.ones(2, requires_grad=True)
     model.feed_data({"q": q})
     assert model._data["q"] is q
-    output = model.netG_forward()
-    assert output.requires_grad
-    modes = []
-    handle = model.netG.register_forward_pre_hook(
-        lambda network, inputs: modes.append(network.training)
-    )
     model.test()
-    handle.remove()
-    assert modes == [False]
-    assert model.netG.training
+    assert model.training
     results = model.current_results()
     assert all(
         value.device.type == "cpu" and not value.requires_grad
