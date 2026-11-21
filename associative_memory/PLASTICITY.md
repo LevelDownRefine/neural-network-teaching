@@ -20,11 +20,16 @@ $$
 
 Delta 一栏采用 [DeltaNet（Schlag 等，2021）](https://proceedings.mlr.press/v139/schlag21a/schlag21a.pdf) 的计算解释，不代表已证实的生物抑制机制。
 
-## 与常见查询方式的区别
+## 点积 Attention 与 Hebbian 记忆的联系
 
-| 方法 | 查询方式 |
-| --- | --- |
-| 相似度检索 / Attention | 先计算匹配权重 $W=f(q,K)$，再得到 $z=WV$。 |
-| Hebbian / Delta | 直接维护记忆矩阵 W，查询时计算 $z=Wq$。 |
+忽略 softmax 和缩放，取 Hebbian 学习率 $\eta=1$，记忆矩阵从零开始：
 
-前者的 W 是查询时生成的匹配权重，后者的 W 是写入时更新的记忆矩阵。前者 K、V 按行存储，输出 z 为行向量。
+$$
+\underbrace{z=\sum_i v_i(k_i^\top q)}_{\text{点积 Attention}}
+\quad\Longleftrightarrow\quad
+z=\left(\sum_i v_i k_i^\top\right)q
+\quad\Longleftrightarrow\quad
+\underbrace{z=Mq,\quad M=\sum_i v_i k_i^\top}_{\text{Hebbian 记忆}}.
+$$
+
+两者结果相同：前者查询时匹配 key 再组合 value；后者写入时累加外积，查询时直接乘记忆矩阵。
