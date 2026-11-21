@@ -51,9 +51,6 @@ class ModelDelta(ModelBase):
         error = v - self.W @ k
         self.W += self.eta * torch.outer(error, k)
 
-    def forward(self, q):
-        return q @ self.W.T
-
     def test(self):
         """Retrieve without changing weights; zero output maps to +1."""
         if self._data is None or "q" not in self._data:
