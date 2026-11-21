@@ -66,3 +66,5 @@ uv run --locked --extra cpu pytest associative_memory/tests -q
 from associative_memory.train import train_epoch
 train_epoch(model, optimizer, criterion, keys, values, order)
 ```
+
+NumPy 回归测试使用提交 `960150d` 的原始 FP64 实现作对照（`tests/reference/numpy_memory.py`），固定 seed=123，覆盖容量、遮挡和回放。检查每步 W、连续读出和符号差异。FP32 与 FP64 不保证逐位相同；近零读出的符号可能因舍入变化，测试会报告这类差异，不要求正确率完全相等。
