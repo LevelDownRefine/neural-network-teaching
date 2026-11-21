@@ -139,11 +139,10 @@ def test_hebbian_attention_readout():
 def test_forward_uses_model_interface(cls):
     model = cls(d=2, m=1)
     model.feed_data({"k": torch.tensor([1.0, 0.0]), "v": torch.tensor([-1.0])})
+    torch.testing.assert_close(model(), torch.zeros(1))
     model.optimize_parameters()
-    data = {"q": torch.tensor([[1.0, 0.0], [0.0, 1.0]])}
-    model.feed_data(data)
+    model.feed_data({"q": torch.tensor([[1.0, 0.0], [0.0, 1.0]])})
+    output = model()
+    assert isinstance(output, torch.Tensor)
     model.test()
-    expected = model.current_results()
-    actual = model(data)
-    for name in expected:
-        np.testing.assert_array_equal(actual[name], expected[name])
+    np.testing.assert_array_equal(output.numpy(), model.current_results()["z"])
