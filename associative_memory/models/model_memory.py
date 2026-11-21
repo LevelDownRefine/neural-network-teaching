@@ -25,12 +25,9 @@ class ModelDelta(ModelBase):
         """
         if set(data) not in ({"k", "v"}, {"q"}):
             raise ValueError("provide exactly {k, v} or {q}")
-        copied = {
-            key: torch.as_tensor(value, dtype=self.W.dtype, device=self.W.device)
-            .detach()
-            .clone()
-            for key, value in data.items()
-        }
+        if any(not isinstance(value, torch.Tensor) for value in data.values()):
+            raise TypeError("model inputs must be torch tensors")
+        copied = {key: value.detach().to(self.W).clone() for key, value in data.items()}
         if any(not torch.isfinite(value).all() for value in copied.values()):
             raise ValueError("data must be finite")
         if "k" in copied:
