@@ -48,20 +48,14 @@ class ModelDelta(ModelBase):
 
     def optimize_parameters(self):
         k, v = self._training_pair()
-        error = v - self()
+        error = v - self.W @ k
         self.W += self.eta * torch.outer(error, k)
-
-    def forward(self):
-        if self._data is None:
-            raise RuntimeError("feed data before forward")
-        q = self._data["q"] if "q" in self._data else self._data["k"]
-        return q @ self.W.T
 
     def test(self):
         """Retrieve without changing weights; zero output maps to +1."""
         if self._data is None or "q" not in self._data:
             raise RuntimeError("feed queries before test")
-        z = self().detach().cpu().numpy()
+        z = (self._data["q"] @ self.W.T).detach().cpu().numpy()
         self._results = {"z": z, "v_hat": np.where(z >= 0, 1, -1)}
 
     def current_results(self):

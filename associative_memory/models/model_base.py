@@ -4,9 +4,6 @@ from torch import nn
 
 
 class ModelBase(nn.Module):
-    def forward(self):
-        raise NotImplementedError
-
     def feed_data(self, data):
         pass
 
