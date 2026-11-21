@@ -1,53 +1,76 @@
 """Exercise the exact homework workloads without asserting random outcomes."""
 
+from copy import deepcopy
+
 import numpy as np
 import pytest
 import torch
 
-from associative_memory.models import ModelDelta, ModelHebbian, ModelZero
+from associative_memory.models import ModelMemory
+from associative_memory.train import DeltaTrainer, HebbianTrainer, Trainer, train_epoch
 
 
 def pairs(rng, p=32, d=64, m=32):
-    return rng.choice([-1.0, 1.0], (p, d)) / np.sqrt(d), rng.choice([-1.0, 1.0], (p, m))
+    return (
+        rng.choice([-1.0, 1.0], (p, d)) / np.sqrt(d),
+        rng.choice([-1.0, 1.0], (p, m)),
+    )
 
 
-def write(model, k, v):
-    model.feed_data({"k": torch.as_tensor(k), "v": torch.as_tensor(v)})
-    model.optimize_parameters()
+def write(model, k, v, criterion=DeltaTrainer.loss):
+    if criterion is None:
+        return
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.5)
+    Trainer(model, criterion, optimizer).step(
+        {"q": torch.as_tensor(k, dtype=torch.float32)},
+        torch.as_tensor(v, dtype=torch.float32),
+    )
 
 
+@torch.no_grad()
 def score(model, q, v):
-    before = model.state_dict()
-    model.feed_data({"q": torch.as_tensor(q)})
-    model.test()
-    result = {key: value.numpy() for key, value in model.current_results().items()}
+    before = deepcopy(model.state_dict())
+    z = model(q=torch.as_tensor(q, dtype=torch.float32))
+    result = {
+        key: value.numpy()
+        for key, value in {"z": z, "v_hat": torch.where(z >= 0, 1, -1)}.items()
+    }
     np.testing.assert_array_equal(model.W, before["W"])
     assert result["z"].shape == v.shape
     assert np.isfinite(result["z"]).all()
-    return float(np.mean(result["v_hat"] == v)), float(np.mean((result["z"] - v) ** 2))
+    return (
+        float(np.mean(result["v_hat"] == v)),
+        float(np.mean((result["z"] - v) ** 2)),
+    )
 
 
 @pytest.mark.parametrize("d", [32, 64, 128])
 @pytest.mark.parametrize("p", [8, 16, 32, 64, 128])
 def test_capacity_workload(d, p):
     k, v = pairs(np.random.default_rng(42), p, d)
-    for cls in (ModelDelta, ModelHebbian, ModelZero):
-        model = cls(d=d)
-        for ki, vi in zip(k, v):
-            write(model, ki, vi)
+    for criterion in (DeltaTrainer.loss, HebbianTrainer.loss, None):
+        model = ModelMemory(d=d)
+        if criterion is not None:
+            optimizer = torch.optim.SGD(model.parameters(), lr=0.5)
+            train_epoch(
+                Trainer(model, criterion, optimizer),
+                torch.tensor(k, dtype=torch.float32),
+                torch.tensor(v, dtype=torch.float32),
+                range(p),
+            )
         accuracy, mse = score(model, k, v)
         assert 0 <= accuracy <= 1 and mse >= 0
-        if cls is ModelZero:
+        if criterion is None:
             assert mse == 1
 
 
-@pytest.mark.parametrize("cls", [ModelDelta, ModelHebbian])
-def test_partial_cue_workload(cls):
+@pytest.mark.parametrize("criterion", [DeltaTrainer.loss, HebbianTrainer.loss])
+def test_partial_cue_workload(criterion):
     rng = np.random.default_rng(42)
     k, v = pairs(rng)
-    model = cls()
+    model = ModelMemory()
     for ki, vi in zip(k, v):
-        write(model, ki, vi)
+        write(model, ki, vi, criterion)
     for p in (0, 0.25, 0.5, 0.75):
         queries = np.repeat(k, 10, axis=0)
         for q in queries:
@@ -65,11 +88,11 @@ def test_replay_workload():
     rng = np.random.default_rng(42)
     ka, va = pairs(rng)
     kb, vb = pairs(rng)
-    model = ModelDelta()
+    model = ModelMemory()
     for _ in range(4):
         for i in rng.permutation(32):
             write(model, ka[i], va[i])
-    snapshot = model.state_dict()
+    snapshot = deepcopy(model.state_dict())
     original = snapshot["W"].clone()
     orders = [rng.permutation(32) for _ in range(4)]
     for condition in ("plain", "matched", 4, 16, 32):
@@ -106,27 +129,25 @@ def test_replay_workload():
         assert model.W.nbytes == 32 * 64 * 4
 
 
-@pytest.mark.parametrize("cls", [ModelDelta, ModelHebbian, ModelZero])
-def test_input_and_state_contracts(cls):
-    model = cls(d=2, m=1)
-    with pytest.raises(RuntimeError):
-        model.optimize_parameters()
-    with pytest.raises(ValueError):
-        model.feed_data({"k": torch.as_tensor([1, 0]), "v": torch.as_tensor([np.nan])})
-    with pytest.raises(ValueError):
-        model.feed_data({"q": torch.as_tensor([[1, 0, 0]])})
-    with pytest.raises(ValueError):
-        model.load_state_dict({"W": torch.zeros(2, 1)})
-    with pytest.raises(TypeError, match="torch tensors"):
-        model.feed_data({"q": np.zeros(2)})
-    state = {"W": torch.ones(1, 2)}
-    model.load_state_dict(state)
-    state["W"].fill_(9)
-    np.testing.assert_array_equal(model.W, [[1, 1]])
-    model.feed_data({"q": torch.as_tensor([1, 0])})
-    model.test()
-    model.feed_data({"k": torch.as_tensor([1, 0]), "v": torch.as_tensor([1])})
-    with pytest.raises(RuntimeError):
-        model.current_results()
-    with pytest.raises(RuntimeError):
-        model.test()
+@pytest.mark.parametrize("criterion", [DeltaTrainer.loss, HebbianTrainer.loss])
+def test_train_epoch_order_and_optimizer_state(criterion):
+    keys = torch.tensor([[1.0, 0.0], [0.6, 0.8]])
+    values = torch.tensor([[1.0], [-1.0]])
+    model = ModelMemory(2, 1)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.2, momentum=0.5)
+    trainer = Trainer(model, criterion, optimizer)
+    expected = torch.zeros(1, 2)
+    velocity = torch.zeros_like(expected)
+    for order in ([1, 0, 1], [0, 1]):
+        model.eval()
+        train_epoch(trainer, keys, values, order)
+        for i in order:
+            residual = (
+                expected @ keys[i] - values[i]
+                if criterion is DeltaTrainer.loss
+                else -values[i]
+            )
+            velocity = 0.5 * velocity + torch.outer(residual, keys[i])
+            expected -= 0.2 * velocity
+        assert model.training
+        torch.testing.assert_close(model.W, expected)
