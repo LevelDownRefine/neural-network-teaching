@@ -50,24 +50,25 @@ class ModelAttention(ModelBase):
         self.V = torch.cat((self.V, self._data["v"].unsqueeze(0)))
         self._results = None
 
+    def forward(self, q):
+        if len(self.K) == 0:
+            raise RuntimeError("write at least one pair before retrieval")
+        z = F.scaled_dot_product_attention(
+            q.reshape(1, -1, self.d),
+            self.K.unsqueeze(0),
+            self.V.unsqueeze(0),
+            dropout_p=0.0,
+            scale=1 / math.sqrt(self.d),
+        )[0]
+        return z[0] if q.ndim == 1 else z
+
     @torch.no_grad()
     def test(self):
         if self._data is None or "q" not in self._data:
             raise RuntimeError("feed queries before test")
-        if len(self.K) == 0:
-            raise RuntimeError("write at least one pair before retrieval")
-        q = self._data["q"]
         self.eval()
         try:
-            z = F.scaled_dot_product_attention(
-                q.reshape(1, -1, self.d),
-                self.K.unsqueeze(0),
-                self.V.unsqueeze(0),
-                dropout_p=0.0,
-                scale=1 / math.sqrt(self.d),
-            )[0]
-            if q.ndim == 1:
-                z = z[0]
+            z = self(self._data["q"])
         finally:
             self.train()
         self._results = {"z": z, "v_hat": torch.where(z >= 0, 1, -1)}

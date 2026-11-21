@@ -55,8 +55,11 @@ class ModelDelta(ModelBase):
     @torch.no_grad()
     def optimize_parameters(self):
         k, v = self._training_pair()
-        error = v - self.W @ k
+        error = v - self(k)
         self.W += self.eta * torch.outer(error, k)
+
+    def forward(self, q):
+        return q @ self.W.T
 
     @torch.no_grad()
     def test(self):
@@ -65,7 +68,7 @@ class ModelDelta(ModelBase):
             raise RuntimeError("feed queries before test")
         self.eval()
         try:
-            z = self._data["q"] @ self.W.T
+            z = self(self._data["q"])
         finally:
             self.train()
         self._results = {"z": z, "v_hat": torch.where(z >= 0, 1, -1)}

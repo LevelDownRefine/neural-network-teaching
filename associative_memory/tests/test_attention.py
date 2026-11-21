@@ -49,3 +49,20 @@ def test_attention_empty_and_ties():
     model.test()
     torch.testing.assert_close(model.current_results()["z"], torch.zeros(1))
     assert model.current_results()["v_hat"].item() == 1
+
+
+def test_attention_forward_supports_query_gradients():
+    model = ModelAttention(d=2, m=1)
+    for k, v in [
+        (torch.tensor([1.0, 0.0]), torch.tensor([1.0])),
+        (torch.tensor([0.0, 1.0]), torch.tensor([-1.0])),
+    ]:
+        model.feed_data({"k": k, "v": v})
+        model.optimize_parameters()
+    q = torch.tensor([0.3, 0.7], requires_grad=True)
+    output = model(q)
+    output.sum().backward()
+    assert q.grad is not None and q.grad.abs().sum() > 0
+    model.feed_data({"q": q})
+    model.test()
+    torch.testing.assert_close(model.current_results()["z"], output.detach())
