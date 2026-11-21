@@ -1,7 +1,8 @@
 """Regression against the actual NumPy implementation from commit 960150d.
 
 The reference source is unchanged. Only its unused base-class import is
-substituted when loading it, to keep this fixture independent of current APIs.
+substituted when loading it. Its weights and learning rate are converted to
+FP32 before use; feed_data then casts all inputs to the same FP32 dtype.
 """
 
 import ast
@@ -30,6 +31,8 @@ def legacy_class(rule):
 class Comparison:
     def __init__(self, rule, d=64, m=32):
         self.old = legacy_class(rule)(d=d, m=m, eta=0.5)
+        self.old.W = self.old.W.astype(np.float32)
+        self.old.eta = np.float32(self.old.eta)
         self.new = ModelMemory(d, m)
         self.optimizer = torch.optim.SGD(self.new.parameters(), lr=0.5)
         self.criterion = {"Delta": delta_loss, "Hebbian": hebbian_loss, "Zero": None}[
@@ -52,6 +55,8 @@ class Comparison:
                     torch.tensor(values[i : i + 1], dtype=torch.float32),
                     [0],
                 )
+            assert self.old.W.dtype == np.float32
+            assert all(x.dtype == np.float32 for x in self.old._data.values())
             w = self.new.W.detach().numpy()
             np.testing.assert_allclose(w, self.old.W, atol=1e-5, rtol=1e-5)
             self.weight_error = max(
@@ -64,6 +69,8 @@ class Comparison:
         old = self.old.current_results()["z"]
         with torch.no_grad():
             new = self.new(q=torch.tensor(queries, dtype=torch.float32)).numpy()
+        assert old.dtype == new.dtype == np.float32
+        targets = targets.astype(np.float32)
         np.testing.assert_allclose(new, old, atol=2e-5, rtol=1e-5)
         self.output_error = max(self.output_error, float(np.max(np.abs(new - old))))
         self.mse_error = max(
