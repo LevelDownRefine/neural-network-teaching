@@ -4,6 +4,7 @@ import argparse
 import json
 import random
 import sys
+import time
 from contextlib import nullcontext
 from pathlib import Path
 
@@ -21,6 +22,8 @@ from utils.ema import ParameterEMA
 from utils.experiment import run_epochs
 from utils.evaluation import evaluate_batches
 from utils.io import atomic_write_json
+from utils.inference_timing import mean_batch_latency
+from utils.spike_activity import SpikeActivity
 import cnns
 import functions.loss_f as loss_f
 
@@ -31,6 +34,13 @@ def main():
     p.add_argument("--batch-size", type=int, default=50)
     p.add_argument("--seed", type=int, default=3)
     p.add_argument("--hidden-size", type=int, default=300)
+    p.add_argument(
+        "--encoding", choices=("repeat", "rate", "latency", "phase"), default="repeat"
+    )
+    p.add_argument("--steps", type=positive_int)
+    p.add_argument("--phase-period", type=positive_int, default=20)
+    p.add_argument("--latency-warmup", type=positive_int, default=3)
+    p.add_argument("--latency-repeats", type=positive_int, default=10)
     p.add_argument("--augment", action="store_true")
     p.add_argument("--ema", action="store_true")
     p.add_argument("--max-batches", type=int, default=0, help="smoke test only")
@@ -42,6 +52,10 @@ def main():
     p.add_argument("--tag", default="")
     p.add_argument("--resume", action="store_true")
     a = p.parse_args()
+    if a.steps is not None and a.steps < 2:
+        p.error("--steps must be at least 2")
+    if (a.encoding != "repeat" or a.steps is not None) and not a.tag:
+        p.error("use --tag for encoding experiments")
     if (a.augment or a.ema) and not a.tag:
         p.error("use --tag for modified experiments")
     if a.cpu_smoke:
@@ -59,12 +73,14 @@ def main():
     cfg = yaml.safe_load((SRC / "Networks" / "MNIST_CNN.yaml").read_text())
     nc = cfg["Network"]
     nc["batch_size"] = a.batch_size
+    if a.steps is not None:
+        nc["n_steps"] = a.steps
     cfg["Layers"]["FC_1"]["n_outputs"] = a.hidden_size
     cfg["Layers"]["output"]["n_inputs"] = a.hidden_size
     loaders = mnist_loaders(
         a.batch_size,
         a.seed,
-        normalization=((0.1307,), (0.3081,)),
+        normalization=((0.1307,), (0.3081,)) if a.encoding == "repeat" else None,
         augmentation=a.augment,
     )
     net = cnns.Network(nc, cfg["Layers"], [1, 28, 28]).cuda()
@@ -72,8 +88,18 @@ def main():
     opt = torch.optim.AdamW(net.get_parameters(), lr=nc["lr"], betas=(0.9, 0.999))
     ema = ParameterEMA(net) if a.ema else None
     steps = nc["n_steps"]
-    desired = torch.tensor([0, 1, 1, 1, 1], device=device).view(1, 1, 1, 1, steps)
+    desired = torch.ones(steps, device=device)
+    desired[0] = 0
+    desired = desired.view(1, 1, 1, 1, steps)
     desired = loss_f.psp(desired, nc).view(1, 1, 1, steps)
+    train_generator = torch.Generator(device=device).manual_seed(a.seed + 1)
+
+    def encode(images, generator):
+        kwargs = {"generator": generator}
+        if a.encoding == "phase":
+            kwargs["period"] = a.phase_period
+        return encode_input(images, steps, a.encoding, **kwargs)
+
     if a.tag and not all(c.isalnum() or c in "-_" for c in a.tag):
         raise ValueError("invalid tag")
     if a.hidden_size != 300 and not a.tag:
@@ -88,12 +114,19 @@ def main():
     )
     prepare_output(out, a.resume)
 
-    def run(loader, epoch, training, collect=False):
+    def run(loader, epoch, training, collect=False, activity=None):
+        generator = (
+            train_generator
+            if training
+            else torch.Generator(device=device).manual_seed(a.seed + 2)
+        )
         if collect:
             net.eval()
 
             def predict(x):
-                x = encode_input(x.cuda(), steps)
+                x = encode(x.cuda(), generator)
+                if activity is not None:
+                    activity.observe_input(x)
                 return net.forward(x, epoch, False).sum(dim=4).squeeze(-1).squeeze(-1)
 
             return evaluate_batches(loader, predict, a.max_batches)
@@ -101,7 +134,7 @@ def main():
         n = correct = 0
         losses = 0.0
         for idx, (x, y) in enumerate(loader):
-            x = encode_input(x.cuda(), steps)
+            x = encode(x.cuda(), generator)
             y = y.cuda()
             with torch.set_grad_enabled(training):
                 pred = net.forward(x, epoch, training)
@@ -109,6 +142,8 @@ def main():
                     target = torch.zeros((len(y), 10, 1, 1, steps), device=device)
                     target[torch.arange(len(y), device=device), y] = desired
                     loss = err.spike_kernel(pred, target, nc)
+                    if a.encoding != "repeat":
+                        loss = loss / steps
                     opt.zero_grad()
                     loss.backward()
                     torch.nn.utils.clip_grad_norm_(net.get_parameters(), 1)
@@ -142,6 +177,13 @@ def main():
         for key in ("batch_size", "seed", "max_batches", "cpu_smoke"):
             if state["config"][key] != getattr(a, key):
                 raise ValueError("resume configuration differs: " + key)
+        for key, default in (
+            ("encoding", "repeat"),
+            ("steps", None),
+            ("phase_period", 20),
+        ):
+            if state["config"].get(key, default) != getattr(a, key):
+                raise ValueError("resume configuration differs: " + key)
         net.load_state_dict(state["net"])
         opt.load_state_dict(state["optimizer"])
         if ema:
@@ -155,6 +197,8 @@ def main():
         torch.set_rng_state(state["torch_rng"])
         if not a.cpu_smoke:
             torch.cuda.set_rng_state_all(state["cuda_rng"])
+        if "encoding_rng" in state:
+            train_generator.set_state(state["encoding_rng"])
         best_checkpoint = restore_best(state, out)
 
     def save_epoch(e, best, history, best_checkpoint):
@@ -170,6 +214,7 @@ def main():
             "numpy_rng": np.random.get_state(),
             "torch_rng": torch.get_rng_state(),
             "cuda_rng": torch.cuda.get_rng_state_all() if not a.cpu_smoke else [],
+            "encoding_rng": train_generator.get_state(),
             "ema_shadow": ema.shadow if ema else None,
             "ema_updates": ema.updates if ema else 0,
         }
@@ -182,14 +227,24 @@ def main():
             flush=True,
         )
 
+    def timed_run(loader, epoch, training):
+        if device == "cuda":
+            torch.cuda.synchronize()
+        start = time.perf_counter()
+        result = run(loader, epoch, training)
+        if device == "cuda":
+            torch.cuda.synchronize()
+        result["seconds"] = time.perf_counter() - start
+        return result
+
     best, history, best_checkpoint = run_epochs(
         start_epoch,
         a.epochs,
         best,
         history,
         best_checkpoint,
-        train_epoch=lambda e: run(loaders[0], e, True),
-        validate=lambda e: run(loaders[1], e, False),
+        train_epoch=lambda e: timed_run(loaders[0], e, True),
+        validate=lambda e: timed_run(loaders[1], e, False),
         capture=lambda e: {"net": cpu_snapshot(net.state_dict()), "epoch": e + 1},
         record=lambda e, tr, va: {
             "epoch": e + 1,
@@ -201,7 +256,34 @@ def main():
     )
     ck = torch.load(out / "best.pt", weights_only=True)
     net.load_state_dict(ck["net"])
-    te = run(loaders[2], ck["epoch"], False, collect=True)
+    activity_result = None
+    latency_result = None
+    if a.encoding == "repeat":
+        te = run(loaders[2], ck["epoch"], False, collect=True)
+    else:
+        with SpikeActivity(net.layers[0]._snn_neuron) as activity:
+            te = run(loaders[2], ck["epoch"], False, collect=True, activity=activity)
+        activity_result = activity.result()
+        batch = next(iter(loaders[2]))[0].to(device)
+        generator = torch.Generator(device=device).manual_seed(a.seed + 3)
+        fixed_input = encode(batch, generator)
+
+        def forward_encoded(x):
+            return net.forward(x, ck["epoch"], False)
+
+        def forward_raw(x):
+            return forward_encoded(encode(x, generator))
+
+        latency_result = {
+            "model_only": mean_batch_latency(
+                forward_encoded, fixed_input, a.latency_warmup, a.latency_repeats
+            ),
+            "encoding_and_model": mean_batch_latency(
+                forward_raw, batch, a.latency_warmup, a.latency_repeats
+            ),
+            "warmup": a.latency_warmup,
+            "device_transfer_included": False,
+        }
     atomic_write_json(
         out / "metrics.json",
         {
@@ -217,6 +299,9 @@ def main():
             ),
             "selection": "validation accuracy",
             "test": te,
+            "spike_activity": activity_result,
+            "latency": latency_result,
+            "measurement_note": "Latency uses a preloaded test batch, synchronized per iteration; model_only excludes encoding, encoding_and_model includes encoding; data loading and transfer excluded.",
             "best_epoch": ck["epoch"],
             "history": history,
             "source": "TSSL architecture and loss with snnTorch surrogate gradients",
@@ -224,6 +309,7 @@ def main():
             if a.cpu_smoke
             else torch.cuda.get_device_name(0),
             "torch": torch.__version__,
+            "cuda": torch.version.cuda,
         },
     )
     print("TEST", te, flush=True)

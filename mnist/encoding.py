@@ -106,12 +106,8 @@ def encode_input(
         spikes = samples < images.unsqueeze(-1)
     else:
         if method == "phase":
-            if (
-                not isinstance(period, int)
-                or isinstance(period, bool)
-                or not 1 <= period <= steps
-            ):
-                raise ValueError("period must be an integer between 1 and steps")
+            if not isinstance(period, int) or isinstance(period, bool) or period < 1:
+                raise ValueError("period must be a positive integer")
             window = period
         else:
             window = steps

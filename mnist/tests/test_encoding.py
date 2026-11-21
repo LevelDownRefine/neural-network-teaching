@@ -68,11 +68,31 @@ def test_encoding_rejects_invalid_arguments():
             encode_input(images, steps)
     with pytest.raises(ValueError, match="unknown encoding"):
         encode_input(images, 10, "unknown")
-    for period in (None, 0, 11, True):
+    for period in (None, 0, -1, True):
         with pytest.raises(ValueError, match="period"):
             encode_input(images, 10, "phase", period=period)
     with pytest.raises(ValueError, match="floating-point"):
         encode_input(images.to(torch.int64), 10, "rate")
+
+
+def test_phase_allows_partial_period():
+    images = torch.tensor([[[[1.0, 0.1]]]])
+    spikes = encode_input(images, 10, "phase", period=20)
+    assert spikes[0, 0, 0, 0, 0] == 1
+    assert spikes[0, 0, 0, 1].sum() == 0
+
+
+def test_rate_generator_state_can_be_restored_for_resume():
+    images = torch.full((2, 1, 3, 3), 0.5)
+    generator = torch.Generator().manual_seed(42)
+    encode_input(images, 10, "rate", generator=generator)
+    state = generator.get_state()
+    expected = encode_input(images, 10, "rate", generator=generator)
+    restored = torch.Generator()
+    restored.set_state(state)
+    torch.testing.assert_close(
+        encode_input(images, 10, "rate", generator=restored), expected
+    )
     for size in (0, 1, True):
         with pytest.raises(ValueError, match="population_size"):
             encode_input(images, 10, "population", population_size=size)
