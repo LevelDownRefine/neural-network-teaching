@@ -4,9 +4,10 @@ from torch import nn
 
 
 class ModelBase(nn.Module):
-    def forward(self, q):
-        """Read from the weight matrix registered by the concrete model."""
-        return q @ self.W.T
+    def forward(self, data):
+        self.feed_data(data)
+        self.test()
+        return self.current_results()
 
     def feed_data(self, data):
         pass

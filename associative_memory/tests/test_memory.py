@@ -133,3 +133,17 @@ def test_hebbian_attention_readout():
         (scores / 2).softmax(-1) @ v,
         scaled_dot_product_attention(q[None], k[None], v[None])[0],
     )
+
+
+@pytest.mark.parametrize("cls", [ModelDelta, ModelHebbian, ModelZero])
+def test_forward_uses_model_interface(cls):
+    model = cls(d=2, m=1)
+    model.feed_data({"k": torch.tensor([1.0, 0.0]), "v": torch.tensor([-1.0])})
+    model.optimize_parameters()
+    data = {"q": torch.tensor([[1.0, 0.0], [0.0, 1.0]])}
+    model.feed_data(data)
+    model.test()
+    expected = model.current_results()
+    actual = model(data)
+    for name in expected:
+        np.testing.assert_array_equal(actual[name], expected[name])

@@ -55,7 +55,7 @@ class ModelDelta(ModelBase):
         """Retrieve without changing weights; zero output maps to +1."""
         if self._data is None or "q" not in self._data:
             raise RuntimeError("feed queries before test")
-        z = self(self._data["q"]).detach().cpu().numpy()
+        z = (self._data["q"] @ self.W.T).detach().cpu().numpy()
         self._results = {"z": z, "v_hat": np.where(z >= 0, 1, -1)}
 
     def current_results(self):
