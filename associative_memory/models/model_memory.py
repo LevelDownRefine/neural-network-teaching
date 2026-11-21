@@ -51,17 +51,18 @@ class ModelDelta(ModelBase):
         error = v - self.W @ k
         self.W += self.eta * torch.outer(error, k)
 
+    @torch.no_grad()
     def test(self):
         """Retrieve without changing weights; zero output maps to +1."""
         if self._data is None or "q" not in self._data:
             raise RuntimeError("feed queries before test")
-        z = (self._data["q"] @ self.W.T).detach().cpu().numpy()
-        self._results = {"z": z, "v_hat": np.where(z >= 0, 1, -1)}
+        z = self._data["q"] @ self.W.T
+        self._results = {"z": z, "v_hat": torch.where(z >= 0, 1, -1)}
 
     def current_results(self):
         if self._results is None:
             raise RuntimeError("run test before requesting results")
-        return self._results
+        return {key: value.detach().cpu() for key, value in self._results.items()}
 
     def reset(self):
         self.W.zero_()

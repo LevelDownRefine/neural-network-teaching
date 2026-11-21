@@ -20,7 +20,7 @@ def score(model, q, v):
     before = model.state_dict()
     model.feed_data({"q": torch.as_tensor(q)})
     model.test()
-    result = model.current_results()
+    result = {key: value.numpy() for key, value in model.current_results().items()}
     np.testing.assert_array_equal(model.W, before["W"])
     assert result["z"].shape == v.shape
     assert np.isfinite(result["z"]).all()
