@@ -97,7 +97,7 @@ def test_snapshot_and_reset(cls):
     model.load_state_dict(state)
     np.testing.assert_array_equal(model.W, state["W"])
     assert model.eta == 0.25
-    before = model.W.copy()
+    before = model.W.clone()
     model.feed_data({"q": [[1.0, 0.0], [0.0, 1.0]]})
     model.test()
     result = model.current_results()
@@ -107,3 +107,27 @@ def test_snapshot_and_reset(cls):
         np.testing.assert_array_equal(result["z"], np.zeros((2, 3)))
     else:
         np.testing.assert_array_equal(result["v_hat"][0], [-1, 1, -1])
+
+
+def test_hebbian_attention_readout():
+    from torch.nn.functional import scaled_dot_product_attention
+
+    generator = torch.Generator().manual_seed(123)
+    k, v, q = [
+        torch.randn(shape, generator=generator, dtype=torch.float64)
+        for shape in [(7, 4), (7, 3), (5, 4)]
+    ]
+    model = ModelHebbian(d=4, m=3)
+    for key, value in zip(k, v):
+        model.feed_data({"k": key.numpy(), "v": value.numpy()})
+        model.optimize_parameters()
+    model.feed_data({"q": q.numpy()})
+    model.test()
+    scores = q @ k.T
+    torch.testing.assert_close(
+        torch.from_numpy(model.current_results()["z"]), model.eta * scores @ v
+    )
+    torch.testing.assert_close(
+        (scores / 2).softmax(-1) @ v,
+        scaled_dot_product_attention(q[None], k[None], v[None])[0],
+    )

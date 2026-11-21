@@ -69,7 +69,7 @@ def test_replay_workload():
         for i in rng.permutation(32):
             write(model, ka[i], va[i])
     snapshot = model.state_dict()
-    original = snapshot["W"].copy()
+    original = snapshot["W"].clone()
     orders = [rng.permutation(32) for _ in range(4)]
     for condition in ("plain", "matched", 4, 16, 32):
         model.load_state_dict(snapshot)
@@ -101,7 +101,7 @@ def test_replay_workload():
                     updates += 1
         assert updates == (128 if condition == "plain" else 256)
         np.testing.assert_array_equal(snapshot["W"], original)
-        assert model.W.size == 32 * 64
+        assert model.W.numel() == 32 * 64
         assert model.W.nbytes == 32 * 64 * 8
 
 

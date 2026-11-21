@@ -1,6 +1,6 @@
 # 可塑性与关联记忆（Homework 3）
 
-公共模型使用 NumPy，命名参考 KAIR 的 ModelBase 接口。
+公共模型使用 PyTorch 在 CPU 上以 float64 更新和检索权重，实验输入输出沿用 NumPy。环境使用仓库的 `cpu` 依赖组（`uv sync --locked --extra cpu`），命名参考 KAIR 的 ModelBase 接口。
 
 - `models/model_base.py`：仅声明公共接口，保持 KAIR 风格。
 - `models/model_memory.py`：实现数据输入、检索、权重快照、重置和 Delta 更新。
