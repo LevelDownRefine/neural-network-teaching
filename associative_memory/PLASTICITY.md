@@ -19,3 +19,21 @@ $$
 逐对更新，loss 对输出维度求和，SGD 不使用动量或权重衰减。
 
 Delta 一栏采用 [DeltaNet（Schlag 等，2021）](https://proceedings.mlr.press/v139/schlag21a/schlag21a.pdf) 的计算解释，不代表已证实的生物抑制机制。
+
+## 从查询与内容的匹配看读出
+
+统一写成：
+
+$$
+z=\sum_i W_i v_i.
+$$
+
+这里 $W_i$ 是第 i 条内容的标量读出权重，不是上文的记忆矩阵 W。
+
+| 方法 | 权重 $W_i$ |
+| --- | --- |
+| 相似度检索（Top-1） | $W_i=\delta_{i,i^*},\quad i^*=\arg\max_j\frac{q^\top k_j}{\lVert q\rVert\lVert k_j\rVert}$ |
+| Softmax Attention | $W_i=\frac{\exp(q^\top k_i/\sqrt d)}{\sum_j\exp(q^\top k_j/\sqrt d)}$ |
+| Hebbian | $W_i=\eta q^\top k_i$ |
+
+$\delta_{i,i^*}$ 在 $i=i^*$ 时为 1，否则为 0；相似度检索假设向量非零，并列时选取一项。Hebbian 一行假设记忆矩阵从零开始，以固定学习率累加所列配对。
