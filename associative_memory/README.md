@@ -3,24 +3,21 @@
 模型使用原生 PyTorch 接口，输入为 FP32 Tensor。环境使用仓库的 `cpu` 依赖组（`uv sync --locked --extra cpu`）。
 
 - `ModelMemory`：零初始化的可训练参数 W，`forward(**kwargs)`（读取 q） 返回 `q @ W.T`，支持单条或批量查询。
-- `delta_loss` / `hebbian_loss`：逐对训练的目标函数，配合普通 SGD 实现两种塑性规则。
+- `DeltaTrainer.loss` / `HebbianTrainer.loss`：逐对训练的目标函数，配合普通 SGD 实现两种塑性规则。
 
 ```python
 from copy import deepcopy
 import torch
 from associative_memory.models import ModelMemory
-from associative_memory.losses import delta_loss, hebbian_loss
+from associative_memory.train import DeltaTrainer, HebbianTrainer
 
 model = ModelMemory(d=64, m=32)
-optimizer = torch.optim.SGD(model.parameters(), lr=0.5)
-criterion = delta_loss  # 换成 hebbian_loss 即为 Hebbian
+trainer = DeltaTrainer(model, lr=0.5)  # 或 HebbianTrainer
 rng = torch.Generator().manual_seed(123)
 k = (2 * torch.randint(2, (64,), generator=rng) - 1).float() / 8
 v = (2 * torch.randint(2, (32,), generator=rng) - 1).float()
 
-optimizer.zero_grad()
-criterion(model(q=k), v).backward()
-optimizer.step()
+trainer.step({"q": k}, v)
 
 model.eval()
 with torch.no_grad():
@@ -53,8 +50,8 @@ uv run --locked --extra cpu pytest associative_memory/tests -q
 `train.py` 提供 `train_epoch(trainer, keys, values, order)`，按 order 逐对更新一轮（允许重复索引用于回放）。输入使用同设备 Tensor。函数不生成随机数、不创建 optimizer、不负责评估或保存；跨轮使用同一个 optimizer，保留其状态。Zero 基线不调用训练函数。
 
 ```python
-from associative_memory.train import Trainer, train_epoch
-trainer = Trainer(model, criterion, optimizer)
+from associative_memory.train import DeltaTrainer, train_epoch
+trainer = DeltaTrainer(model, lr=0.5)
 train_epoch(trainer, keys, values, order)
 ```
 
@@ -72,3 +69,5 @@ trainer.step({"q": k}, v)
 ```
 
 两者继承 Trainer，仅配置各自目标函数和无动量、无权重衰减的 SGD；共用 step 实现。模型与 optimizer 仍可通过 trainer.model 和 trainer.optimizer 访问。
+
+每个规则的 loss 定义在对应 Trainer 子类中，不再提供独立 losses.py。公共 Trainer 仍支持传入其他 criterion 和 optimizer。

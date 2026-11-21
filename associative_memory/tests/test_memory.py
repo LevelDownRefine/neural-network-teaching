@@ -7,8 +7,8 @@ import numpy as np
 import pytest
 import torch
 
-from associative_memory.losses import delta_loss, hebbian_loss
 from associative_memory.models import ModelMemory
+from associative_memory.train import DeltaTrainer, HebbianTrainer
 
 
 def fla_reference():
@@ -59,7 +59,7 @@ def test_delta_matches_fla(seed, eta, d, m, length):
     predictions = []
     for k, v, q in zip(keys, values, queries):
         optimizer.zero_grad()
-        loss = delta_loss(
+        loss = DeltaTrainer.loss(
             model(q=torch.tensor(k, dtype=torch.float32)),
             torch.tensor(v, dtype=torch.float32),
         )
@@ -75,7 +75,7 @@ def test_delta_matches_fla(seed, eta, d, m, length):
     )
 
 
-@pytest.mark.parametrize("criterion", [delta_loss, hebbian_loss])
+@pytest.mark.parametrize("criterion", [DeltaTrainer.loss, HebbianTrainer.loss])
 @pytest.mark.parametrize("eta", [0.25, 0.5, 1.0])
 def test_sgd_matches_every_explicit_update(criterion, eta):
     rng = torch.Generator().manual_seed(123)
@@ -87,7 +87,7 @@ def test_sgd_matches_every_explicit_update(criterion, eta):
     for _ in range(20):
         k = torch.randn(7, generator=rng) / 7**0.5
         v = torch.randn(5, generator=rng)
-        error = v - expected @ k if criterion is delta_loss else v
+        error = v - expected @ k if criterion is DeltaTrainer.loss else v
         expected += eta * torch.outer(error, k)
         optimizer.zero_grad()
         criterion(model(q=k), v).backward()
@@ -103,7 +103,7 @@ def test_hebbian_closed_form():
     optimizer = torch.optim.SGD(model.parameters(), lr=0.5)
     for key, value in zip(k, v):
         optimizer.zero_grad()
-        hebbian_loss(model(q=key), value).backward()
+        HebbianTrainer.loss(model(q=key), value).backward()
         optimizer.step()
     torch.testing.assert_close(model.W, 0.5 * v.T @ k)
     torch.testing.assert_close(model(q=k), 0.5 * (k @ k.T) @ v)
@@ -117,7 +117,7 @@ def test_native_state_and_module_composition():
     assert not dict(model.named_buffers())
     snapshot = deepcopy(model.state_dict())
     optimizer = torch.optim.SGD(model.parameters(), lr=0.5)
-    delta_loss(model(q=torch.ones(2)), torch.ones(1)).backward()
+    DeltaTrainer.loss(model(q=torch.ones(2)), torch.ones(1)).backward()
     optimizer.step()
     assert model.W.abs().sum() > 0
     assert snapshot["W"].count_nonzero() == 0
@@ -129,7 +129,7 @@ def test_native_state_and_module_composition():
     assert "0.W" in state
 
 
-@pytest.mark.parametrize("criterion", [delta_loss, hebbian_loss])
+@pytest.mark.parametrize("criterion", [DeltaTrainer.loss, HebbianTrainer.loss])
 def test_input_contracts_and_gradients(criterion):
     model = ModelMemory(2, 1)
     with pytest.raises(TypeError):

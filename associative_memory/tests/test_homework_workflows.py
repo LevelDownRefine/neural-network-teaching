@@ -6,9 +6,8 @@ import numpy as np
 import pytest
 import torch
 
-from associative_memory.losses import delta_loss, hebbian_loss
 from associative_memory.models import ModelMemory
-from associative_memory.train import Trainer, train_epoch
+from associative_memory.train import DeltaTrainer, HebbianTrainer, Trainer, train_epoch
 
 
 def pairs(rng, p=32, d=64, m=32):
@@ -18,7 +17,7 @@ def pairs(rng, p=32, d=64, m=32):
     )
 
 
-def write(model, k, v, criterion=delta_loss):
+def write(model, k, v, criterion=DeltaTrainer.loss):
     if criterion is None:
         return
     optimizer = torch.optim.SGD(model.parameters(), lr=0.5)
@@ -49,7 +48,7 @@ def score(model, q, v):
 @pytest.mark.parametrize("p", [8, 16, 32, 64, 128])
 def test_capacity_workload(d, p):
     k, v = pairs(np.random.default_rng(42), p, d)
-    for criterion in (delta_loss, hebbian_loss, None):
+    for criterion in (DeltaTrainer.loss, HebbianTrainer.loss, None):
         model = ModelMemory(d=d)
         if criterion is not None:
             optimizer = torch.optim.SGD(model.parameters(), lr=0.5)
@@ -65,7 +64,7 @@ def test_capacity_workload(d, p):
             assert mse == 1
 
 
-@pytest.mark.parametrize("criterion", [delta_loss, hebbian_loss])
+@pytest.mark.parametrize("criterion", [DeltaTrainer.loss, HebbianTrainer.loss])
 def test_partial_cue_workload(criterion):
     rng = np.random.default_rng(42)
     k, v = pairs(rng)
@@ -130,7 +129,7 @@ def test_replay_workload():
         assert model.W.nbytes == 32 * 64 * 4
 
 
-@pytest.mark.parametrize("criterion", [delta_loss, hebbian_loss])
+@pytest.mark.parametrize("criterion", [DeltaTrainer.loss, HebbianTrainer.loss])
 def test_train_epoch_order_and_optimizer_state(criterion):
     keys = torch.tensor([[1.0, 0.0], [0.6, 0.8]])
     values = torch.tensor([[1.0], [-1.0]])
@@ -145,7 +144,7 @@ def test_train_epoch_order_and_optimizer_state(criterion):
         for i in order:
             residual = (
                 expected @ keys[i] - values[i]
-                if criterion is delta_loss
+                if criterion is DeltaTrainer.loss
                 else -values[i]
             )
             velocity = 0.5 * velocity + torch.outer(residual, keys[i])

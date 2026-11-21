@@ -2,8 +2,6 @@
 
 import torch
 
-from .losses import delta_loss, hebbian_loss
-
 
 class Trainer:
     """Compose a model, objective and optimizer without changing their APIs."""
@@ -22,21 +20,42 @@ class Trainer:
         self.optimizer.step()
         return loss.detach()
 
+    @staticmethod
+    def _validate_loss_inputs(pred, target):
+        for tensor in (pred, target):
+            if not isinstance(tensor, torch.Tensor):
+                raise TypeError("loss inputs must be torch tensors")
+            assert tensor.dtype == torch.float32, "loss inputs must be float32"
+            if tensor.ndim != 1 or not tensor.isfinite().all():
+                raise ValueError("loss requires finite vectors for one training pair")
+        if pred.shape != target.shape:
+            raise ValueError("prediction and target shapes must match")
+
 
 class DeltaTrainer(Trainer):
     """Delta rule through half squared error and plain SGD."""
 
     def __init__(self, model, lr=0.5):
-        super().__init__(model, delta_loss, torch.optim.SGD(model.parameters(), lr=lr))
+        super().__init__(model, self.loss, torch.optim.SGD(model.parameters(), lr=lr))
+
+    @staticmethod
+    def loss(pred, target):
+        """Half squared error, summed over output coordinates."""
+        Trainer._validate_loss_inputs(pred, target)
+        return 0.5 * (pred - target).square().sum()
 
 
 class HebbianTrainer(Trainer):
     """Hebbian rule through negative correlation and plain SGD."""
 
     def __init__(self, model, lr=0.5):
-        super().__init__(
-            model, hebbian_loss, torch.optim.SGD(model.parameters(), lr=lr)
-        )
+        super().__init__(model, self.loss, torch.optim.SGD(model.parameters(), lr=lr))
+
+    @staticmethod
+    def loss(pred, target):
+        """Negative correlation objective; unbounded, not an error metric."""
+        Trainer._validate_loss_inputs(pred, target)
+        return -(pred * target).sum()
 
 
 def train_epoch(trainer, keys, values, order):
