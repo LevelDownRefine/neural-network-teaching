@@ -20,19 +20,26 @@ $$
 
 Delta 一栏采用 [DeltaNet（Schlag 等，2021）](https://proceedings.mlr.press/v139/schlag21a/schlag21a.pdf) 的计算解释，不代表已证实的生物抑制机制。
 
-## 从查询与内容的匹配看读出
+## 与常见查询方式的区别
 
-将所有 key、原始 value 分别按列组成 K、V，α 为全部记忆的权重向量：
+相似度检索和标准 Attention 保留各条 K、V，查询时匹配 key，再选取或组合 value。我们的 Hebbian / Delta 将配对写入记忆矩阵 W，查询时直接计算 Wq，不再读取原始 K、V，也不显式计算各条记忆的权重 α。
+
+以下 K、V 分别由 key、value 按列组成：
+
+| 方法 | 存储内容 | 查询计算 |
+| --- | --- | --- |
+| 相似度检索（Top-1） | 各条 K、V | $\alpha=\mathrm{hardmax}(\widehat K^\top\widehat q),\quad z=V\alpha$ |
+| Softmax Attention | 各条 K、V | $\alpha=\mathrm{softmax}(K^\top q/\sqrt d),\quad z=V\alpha$ |
+| Hebbian / Delta | 共同写入的记忆矩阵 W | $z=Wq$ |
+
+带帽表示单位归一化；hardmax 将最大分数所在位置置为 1，其余置为 0，并列时选取一项。检索中的 α 只是选择结果的数学表示，实现时可直接返回选中的 value。
+
+**联系：** 从零开始、固定学习率写入时，Hebbian 可展开为：
 
 $$
-\boxed{z=V\alpha.}
+W=\eta VK^\top,\qquad z=Wq=V(\eta K^\top q).
 $$
 
-| 方法 | $\alpha$ |
-| --- | --- |
-| 相似度检索（Top-1） | $\alpha=\mathrm{hardmax}(\widehat K^\top\widehat q)$ |
-| Softmax Attention | $\alpha=\mathrm{softmax}(K^\top q/\sqrt d)$ |
-| Hebbian | $\alpha=\eta K^\top q$ |
-| Delta | $\alpha=\eta(I+\eta U)^{-1}K^\top q,\quad U=\mathrm{triu}(K^\top K,1)$ |
+因此它等价于用点积系数组合 value，但实际实现将配对预先累加到 W，并不保存或显式计算 α。Delta 同样直接读出 Wq，只是用残差更新 W，不能套用 Hebbian 的上述展开式。
 
-$\widehat K$ 的各列及 $\widehat q$ 均单位归一化；hardmax 将最大分数所在位置置为 1，其余置为 0，并列时选取一项。U 取严格上三角部分，K、V 按写入顺序排列。Hebbian、Delta 均假设记忆矩阵从零开始、学习率固定；Delta 一行是逐次更新的等价展开，不要求实际求逆。
+**区别：** 显式 K、V 的存储随条目数增长；固定维度的 W 大小不变，但不同配对共享权重，可能相互干扰。Hebbian 与 Delta 在这里的查询方式相同，区别仍在写入规则。
