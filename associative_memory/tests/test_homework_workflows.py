@@ -8,6 +8,7 @@ import torch
 
 from associative_memory.losses import delta_loss, hebbian_loss
 from associative_memory.models import ModelMemory
+from associative_memory.train import train_epoch
 
 
 def pairs(rng, p=32, d=64, m=32):
@@ -52,8 +53,16 @@ def test_capacity_workload(d, p):
     k, v = pairs(np.random.default_rng(42), p, d)
     for criterion in (delta_loss, hebbian_loss, None):
         model = ModelMemory(d=d)
-        for ki, vi in zip(k, v):
-            write(model, ki, vi, criterion)
+        if criterion is not None:
+            optimizer = torch.optim.SGD(model.parameters(), lr=0.5)
+            train_epoch(
+                model,
+                optimizer,
+                criterion,
+                torch.tensor(k, dtype=torch.float32),
+                torch.tensor(v, dtype=torch.float32),
+                range(p),
+            )
         accuracy, mse = score(model, k, v)
         assert 0 <= accuracy <= 1 and mse >= 0
         if criterion is None:
@@ -123,3 +132,26 @@ def test_replay_workload():
         np.testing.assert_array_equal(snapshot["W"], original)
         assert model.W.numel() == 32 * 64
         assert model.W.nbytes == 32 * 64 * 4
+
+
+@pytest.mark.parametrize("criterion", [delta_loss, hebbian_loss])
+def test_train_epoch_order_and_optimizer_state(criterion):
+    keys = torch.tensor([[1.0, 0.0], [0.6, 0.8]])
+    values = torch.tensor([[1.0], [-1.0]])
+    model = ModelMemory(2, 1)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.2, momentum=0.5)
+    expected = torch.zeros(1, 2)
+    velocity = torch.zeros_like(expected)
+    for order in ([1, 0, 1], [0, 1]):
+        model.eval()
+        train_epoch(model, optimizer, criterion, keys, values, order)
+        for i in order:
+            residual = (
+                expected @ keys[i] - values[i]
+                if criterion is delta_loss
+                else -values[i]
+            )
+            velocity = 0.5 * velocity + torch.outer(residual, keys[i])
+            expected -= 0.2 * velocity
+        assert model.training
+        torch.testing.assert_close(model.W, expected)

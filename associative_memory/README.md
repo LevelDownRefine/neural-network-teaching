@@ -57,3 +57,12 @@ uv run --locked --extra cpu pytest associative_memory/tests -q
 测试保留固定版本 FLA 官方参考函数对照（源码和 MIT 许可证位于 tests/reference），比较 Delta 每步读出和最终权重；另验证两种 SGD 更新与显式公式一致、Hebbian 闭式解、原生状态恢复及模块组合、Attention 梯度传播，以及容量、遮挡和回放流程。
 
 统一调用可使用 `model(**batch)`：Memory 读取 `q`，Attention 读取 `q`、`k`、`v`，其余字段忽略。同一检索 batch 可传给两者；必需字段缺失会抛出 KeyError。
+
+## 公共训练循环
+
+`train.py` 提供 `train_epoch(model, optimizer, criterion, keys, values, order)`，按 order 逐对更新一轮（允许重复索引用于回放）。输入使用同设备 Tensor。函数不生成随机数、不创建 optimizer、不负责评估或保存；跨轮使用同一个 optimizer，保留其状态。Zero 和无参数 Attention 不调用训练函数。
+
+```python
+from associative_memory.train import train_epoch
+train_epoch(model, optimizer, criterion, keys, values, order)
+```
