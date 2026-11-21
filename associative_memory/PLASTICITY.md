@@ -30,9 +30,9 @@ $$
 
 | 方法 | $\alpha$ |
 | --- | --- |
-| 相似度检索（Top-1） | $\alpha=\delta_{\arg\max(\widehat K^\top\widehat q)}$ |
+| 相似度检索（Top-1） | $\alpha=\mathrm{hardmax}(\widehat K^\top\widehat q)$ |
 | Softmax Attention | $\alpha=\mathrm{softmax}(K^\top q/\sqrt d)$ |
 | Hebbian | $\alpha=\eta K^\top q$ |
 | Delta | $\alpha=\eta(I+\eta U)^{-1}K^\top q,\quad U=\mathrm{triu}(K^\top K,1)$ |
 
-$\widehat K$ 的各列及 $\widehat q$ 均单位归一化；$\delta_r$ 表示仅第 r 个分量为 1、其余为 0 的向量，并列最大值选取一项。U 取严格上三角部分，K、V 按写入顺序排列。Hebbian、Delta 均假设记忆矩阵从零开始、学习率固定；Delta 一行是逐次更新的等价展开，不要求实际求逆。
+$\widehat K$ 的各列及 $\widehat q$ 均单位归一化；hardmax 将最大分数所在位置置为 1，其余置为 0，并列时选取一项。U 取严格上三角部分，K、V 按写入顺序排列。Hebbian、Delta 均假设记忆矩阵从零开始、学习率固定；Delta 一行是逐次更新的等价展开，不要求实际求逆。
