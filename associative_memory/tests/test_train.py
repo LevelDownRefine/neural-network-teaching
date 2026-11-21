@@ -2,7 +2,7 @@ import pytest
 import torch
 
 from associative_memory.models import ModelMemory
-from associative_memory.train import DeltaTrainer, HebbianTrainer, Trainer
+from associative_memory.train import DeltaTrainer, HebbianTrainer, Trainer, ZeroTrainer
 
 
 def test_trainer_keyword_inputs_and_detached_loss():
@@ -43,3 +43,20 @@ def test_rule_trainers_match_explicit_updates(trainer_class, lr):
         loss = trainer.step({"q": k}, v)
         assert not loss.requires_grad
         torch.testing.assert_close(model.W, expected)
+
+
+def test_zero_trainer_never_writes():
+    from associative_memory.train import train_epoch
+
+    model = ModelMemory(2, 1)
+    trainer = ZeroTrainer(model)
+    keys, values = torch.eye(2), torch.ones(2, 1)
+    train_epoch(trainer, keys, values, [1, 0, 1])
+    torch.testing.assert_close(model.W, torch.zeros(1, 2))
+    assert model.W.grad is None and trainer.optimizer is None
+    # No-write also means preserving an existing state, not resetting it.
+    model.load_state_dict({"W": torch.tensor([[2.0, -3.0]])})
+    assert trainer.step({"q": keys[0]}, values[0]) is None
+    torch.testing.assert_close(model.W, torch.tensor([[2.0, -3.0]]))
+    with pytest.raises(ValueError):
+        trainer.step({"q": keys[0]}, torch.ones(2))
