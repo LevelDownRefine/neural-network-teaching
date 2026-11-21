@@ -21,9 +21,6 @@ class ModelDelta(ModelBase):
         self._data = None
         self._results = None
 
-    def init_train(self):
-        self.train()
-
     def feed_data(self, data):
         """Accept {k, v} for a training pair or {q} for retrieval.
 

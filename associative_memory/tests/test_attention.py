@@ -11,7 +11,6 @@ def test_attention_readout_and_snapshot(single):
     values = torch.randn(8, 3, generator=generator)
     queries = torch.randn(5, 4, generator=generator)
     model = ModelAttention(d=4, m=3)
-    model.init_train()
     for k, v in zip(keys, values):
         model.feed_data({"k": k, "v": v})
         model.optimize_parameters()

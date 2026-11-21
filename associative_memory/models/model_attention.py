@@ -21,9 +21,6 @@ class ModelAttention(ModelBase):
         self._data = None
         self._results = None
 
-    def init_train(self):
-        self.train()
-
     def feed_data(self, data):
         if set(data) not in ({"k", "v"}, {"q"}):
             raise ValueError("provide exactly {k, v} or {q}")

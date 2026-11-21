@@ -173,7 +173,6 @@ def test_failed_load_preserves_weights_and_cached_results():
 
 def test_tensor_input_and_result_lifecycle():
     model = ModelDelta(d=2, m=1)
-    model.init_train()
     q = torch.ones(2, requires_grad=True)
     model.feed_data({"q": q})
     assert model._data["q"] is q

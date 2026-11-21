@@ -8,9 +8,6 @@ class ModelBase(torch.nn.Module):
         super().__init__()
         self.device = torch.device(device)
 
-    def init_train(self):
-        pass
-
     def feed_data(self, data):
         pass
 

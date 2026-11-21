@@ -14,7 +14,6 @@ import torch
 from associative_memory.models import ModelDelta
 
 model = ModelDelta(d=64, m=32, eta=0.5)
-model.init_train()
 rng = torch.Generator().manual_seed(42)
 k = (2 * torch.randint(2, (64,), generator=rng) - 1).float() / 8
 v = (2 * torch.randint(2, (32,), generator=rng) - 1).float()
@@ -52,7 +51,7 @@ Delta 与固定版本 FLA 官方 Gated DeltaNet 参考函数比较每步读出�
 ## 模型接口
 
 ModelBase 继承 nn.Module，具体模型直接注册 FP32 权重 W。
-feed_data 校验并搬运 Tensor，保留输入计算图。init_train 设置训练模式。
+feed_data 校验并搬运 Tensor，保留输入计算图。
 optimize_parameters 按作业规则更新权重。test 在 eval/no_grad 下检索，随后恢复 train。
 current_results 返回 detached CPU Tensor。state_dict()/load_state_dict(state) 保留独立权重快照。
 
