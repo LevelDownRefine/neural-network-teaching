@@ -1,64 +1,59 @@
 # 可塑性与关联记忆（Homework 3）
 
-公共模型使用 PyTorch 在 CPU 上以 float32 更新和检索权重，模型输入使用 Tensor，current_results() 返回脱离计算图的 CPU Tensor，实验脚本按需调用 .numpy()。环境使用仓库的 `cpu` 依赖组（`uv sync --locked --extra cpu`），命名参考 KAIR 的 ModelBase 接口。
+模型使用原生 PyTorch 接口，输入为 FP32 Tensor。环境使用仓库的 `cpu` 依赖组（`uv sync --locked --extra cpu`）。
 
-- `models/model_base.py`：仅声明公共接口，保持 KAIR 风格。
-- `models/model_memory.py`：实现数据输入、检索、权重快照、重置和 Delta 更新。
-- `ModelHebbian`：继承 `ModelDelta`，只重写 `optimize_parameters()`。
-- `ModelZero`：不写入的零矩阵基线。
-
-在仓库根目录的 Python 环境中：
+- `ModelMemory`：零初始化的可训练参数 W，`forward(**kwargs)`（读取 q） 返回 `q @ W.T`，支持单条或批量查询。
+- `delta_loss` / `hebbian_loss`：逐对训练的目标函数，配合普通 SGD 实现两种塑性规则。
+- `ModelAttention`：`forward(**kwargs)`（读取 q/k/v） 直接计算单头 scaled dot-product attention，无投影参数，K/V 由调用方持有。
+- `ModelBase`：只保留维度和输入检查，状态管理使用 nn.Module 原生接口。
 
 ```python
+from copy import deepcopy
 import torch
-from associative_memory.models import ModelDelta
+from associative_memory.models import ModelMemory
+from associative_memory.losses import delta_loss, hebbian_loss
 
-model = ModelDelta(d=64, m=32, eta=0.5)
-rng = torch.Generator().manual_seed(42)
+model = ModelMemory(d=64, m=32)
+optimizer = torch.optim.SGD(model.parameters(), lr=0.5)
+criterion = delta_loss  # 换成 hebbian_loss 即为 Hebbian
+rng = torch.Generator().manual_seed(123)
 k = (2 * torch.randint(2, (64,), generator=rng) - 1).float() / 8
 v = (2 * torch.randint(2, (32,), generator=rng) - 1).float()
-model.feed_data({"k": k, "v": v})
-model.optimize_parameters()
-model.feed_data({"q": k})
-model.test()
-results = model.current_results()
+
+optimizer.zero_grad()
+criterion(model(q=k), v).backward()
+optimizer.step()
+
+model.eval()
+with torch.no_grad():
+    z = model(q=k)
+    v_hat = torch.where(z >= 0, 1, -1)
+snapshot = deepcopy(model.state_dict())
+model.load_state_dict(snapshot)
 ```
 
-`z` 是连续输出，用于计算 MSE；`v_hat` 是符号输出，用于计算比特正确率。
-零输出对应 +1。训练每次只接收一条配对；检索支持单条或批量查询。
-模型不自动归一化输入、不裁剪或衰减权重。
+Delta 目标为 `0.5 * (pred - target).square().sum()`，得到 `W += lr * outer(v - W @ k, k)`。
+Hebbian 目标为 `-(pred * target).sum()`，得到 `W += lr * outer(v, k)`；该目标无有限最小值，仅用于产生规则对应的梯度，评估仍使用正确率和 MSE。
+严格对应作业时逐对更新，不使用 momentum、weight decay 或 mean reduction。Zero 基线使用同一个零初始化模型，不执行训练。
 
-多轮训练、随机顺序、遮挡和回放由后续实验脚本控制。评估指标和数据生成也放在模型外。
-实验三使用 `state_dict()` 和 `load_state_dict()` 复制 A 训练完成后的权重。
-快照不共享数组内存；`reset()` 清零权重并清空当前输入与结果。
+不再使用 feed_data、optimize_parameters、test、current_results 或 reset。训练轮数、顺序、设备搬运、归一化和评估由调用方控制。重新开始可创建新模型。需要独立快照时必须 deepcopy，原生 state_dict 的张量共享模型存储。若使用带动量的优化器，恢复训练还应保存和恢复 optimizer.state_dict()。
 
-本 PR 提供公共模型、数据生成与测试；正式实验脚本另行提交。
+```python
+from associative_memory.models import ModelAttention
+attention = ModelAttention(d=64, m=32)
+z = attention(q=q, k=keys, v=values)
+```
 
-## 单元测试
+Attention 使用默认 `1/sqrt(d)` 缩放和零 dropout，支持单条或批量 q，K/V 必须是非空、等长矩阵。它可以向 Q/K/V 上游的可训练投影传播梯度。标准缩放对已经单位归一化的线索会产生较平坦的 softmax，比较实验应说明缩放差异和存储成本：FP32 的 W 为 `4*m*d` 字节，显式 K/V 为 `4*P*(d+m)` 字节。
+
+## 数据与测试
+
+`data.py` 的 `generate_pairs(rng, p, d, m)` 返回 K、V 和随机写入顺序。随机数生成器由实验持有，各方法共享数据与顺序；正式实验脚本另行提交。
 
 ```powershell
 uv run --locked --extra cpu pytest associative_memory/tests -q
 ```
 
-Delta 与固定版本 FLA 官方 Gated DeltaNet 参考函数比较每步读出和最终权重：关闭遗忘（g=0），beta=eta，scale=1，状态转置为 W。覆盖两组随机种子、三种学习率和两种维数，并从非零权重开始。Hebbian 使用批量闭式解交叉验证；另测试零基线、快照、重置和检索不修改权重。参考源码及 MIT 许可证位于 tests/reference。
+测试保留固定版本 FLA 官方参考函数对照（源码和 MIT 许可证位于 tests/reference），比较 Delta 每步读出和最终权重；另验证两种 SGD 更新与显式公式一致、Hebbian 闭式解、原生状态恢复及模块组合、Attention 梯度传播，以及容量、遮挡和回放流程。
 
-## 数据生成
-
-`data.py` 的 `generate_pairs(rng, p, d, m)` 返回 K、V 和初始随机写入顺序。
-实验脚本负责创建 `rng = np.random.default_rng(seed)`，并将生成的数据和顺序共享给各方法。
-多轮训练的新顺序、遮挡和回放由实验脚本使用持有的 rng 生成。
-
-## 模型接口
-
-ModelBase 继承 nn.Module，具体模型直接注册 FP32 权重 W。
-feed_data 校验并搬运 Tensor，保留输入计算图。
-optimize_parameters 按作业规则更新权重。test 在 eval/no_grad 下检索，随后恢复 train。
-current_results 返回 detached CPU Tensor。state_dict()/load_state_dict(state) 保留独立权重快照。
-
-## Attention 对照
-
-ModelAttention 直接使用给定 Q/K/V 做单头 scaled dot-product attention，使用 PyTorch scaled_dot_product_attention，scale=1/sqrt(d)，dropout=0。它沿用 feed_data、optimize_parameters、test、current_results 和快照接口。每次 optimize_parameters 将一条 k/v 追加到记忆，重复写入也会保留重复条目。这里没有可学习的投影层或梯度优化器。
-
-快照包含 K 和 V，加载时可恢复不同长度的记忆；reset 清空记忆，空记忆检索报错。FP32 存储成本为 4*P*(d+m) 字节，Delta/Hebbian 为 4*m*d 字节。
-
-作业的线索向量已经单位归一化，标准 attention 缩放会使分数更小，softmax 更接近均匀分配。该对照用于检查接口及机制差异，实验比较需说明缩放和存储成本。
+统一调用可使用 `model(**batch)`：Memory 读取 `q`，Attention 读取 `q`、`k`、`v`，其余字段忽略。同一检索 batch 可传给两者；必需字段缺失会抛出 KeyError。
