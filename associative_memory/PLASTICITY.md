@@ -34,6 +34,6 @@ $$
 | --- | --- |
 | 相似度检索（Top-1） | $W_i=\delta_{i,i^{\ast}},\quad i^{\ast}=\arg\max_j\frac{q^\top k_j}{\lVert q\rVert\lVert k_j\rVert}$ |
 | Softmax Attention | $W_i=\frac{\exp(q^\top k_i/\sqrt d)}{\sum_j\exp(q^\top k_j/\sqrt d)}$ |
-| Hebbian | $W_i=\eta q^\top k_i$ |
+| Hebbian / Delta | $W_i=\eta q^\top k_i$ |
 
-$\delta_{i,i^{\ast}}$ 在 $i=i^{\ast}$ 时为 1，否则为 0；相似度检索假设向量非零，并列时选取一项。Hebbian 一行假设记忆矩阵从零开始，以固定学习率累加所列配对。
+$\delta_{i,i^{\ast}}$ 在 $i=i^{\ast}$ 时为 1，否则为 0；相似度检索假设向量非零，并列时选取一项。Hebbian / Delta 一行假设记忆矩阵从零开始、学习率固定；Delta 的被加权内容为写入时的残差，而非原始 v。
