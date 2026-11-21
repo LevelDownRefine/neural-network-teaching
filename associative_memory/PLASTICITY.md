@@ -22,19 +22,17 @@ Delta 一栏采用 [DeltaNet（Schlag 等，2021）](https://proceedings.mlr.pre
 
 ## 从查询与内容的匹配看读出
 
-统一写成：
+将所有 key、原始 value 分别按列组成 K、V，$\alpha$ 为全部记忆的权重向量：
 
 $$
-\boxed{z=\sum_{i=1}^{T}\alpha_i v_i.}
+\boxed{z=V\alpha.}
 $$
-
-表中 $\alpha$ 表示第 i 条记忆对应的系数，即 $\alpha=\alpha_i$；$v_i$ 为原始内容。
 
 | 方法 | $\alpha$ |
 | --- | --- |
-| 相似度检索（Top-1） | $\alpha=\delta_{i,i^{\ast}},\quad i^{\ast}=\arg\max_j\frac{q^\top k_j}{\lVert q\rVert\lVert k_j\rVert}$ |
-| Softmax Attention | $\alpha=\frac{\exp(q^\top k_i/\sqrt d)}{\sum_j\exp(q^\top k_j/\sqrt d)}$ |
-| Hebbian | $\alpha=\eta k_i^\top q$ |
-| Delta | $\alpha=\eta k_i^\top(I-\eta k_{i+1}k_{i+1}^\top)\cdots(I-\eta k_Tk_T^\top)q$ |
+| 相似度检索（Top-1） | $\alpha=\delta_{\arg\max(\widehat K^\top\widehat q)}$ |
+| Softmax Attention | $\alpha=\operatorname{softmax}(K^\top q/\sqrt d)$ |
+| Hebbian | $\alpha=\eta K^\top q$ |
+| Delta | $\alpha=\eta(I+\eta U)^{-1}K^\top q,\quad U=\operatorname{triu}(K^\top K,1)$ |
 
-$\delta_{i,i^{\ast}}$ 在 $i=i^{\ast}$ 时为 1，否则为 0；相似度检索假设向量非零，并列时选取一项。Hebbian、Delta 假设记忆矩阵从零开始、学习率固定；Delta 的矩阵乘积按后续写入顺序排列，$i=T$ 时为空乘积 I。
+$\widehat K$ 的各列及 $\widehat q$ 均单位归一化；$\delta_r$ 表示仅第 r 个分量为 1、其余为 0 的向量，并列最大值选取一项。U 取严格上三角部分，K、V 按写入顺序排列。Hebbian、Delta 均假设记忆矩阵从零开始、学习率固定；Delta 一行是逐次更新的等价展开，不要求实际求逆。
