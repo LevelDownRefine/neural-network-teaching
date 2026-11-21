@@ -2,6 +2,7 @@
 
 import numpy as np
 import pytest
+import torch
 
 from associative_memory.models import ModelDelta, ModelHebbian, ModelZero
 
@@ -115,10 +116,10 @@ def test_input_and_state_contracts(cls):
     with pytest.raises(ValueError):
         model.feed_data({"q": [[1, 0, 0]]})
     with pytest.raises(ValueError):
-        model.load_state_dict({"W": np.zeros((2, 1))})
-    state = {"W": np.ones((1, 2))}
+        model.load_state_dict({"W": torch.zeros(2, 1)})
+    state = {"W": torch.ones(1, 2)}
     model.load_state_dict(state)
-    state["W"].fill(9)
+    state["W"].fill_(9)
     np.testing.assert_array_equal(model.W, [[1, 1]])
     model.feed_data({"q": [1, 0]})
     model.test()

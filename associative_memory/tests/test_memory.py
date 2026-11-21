@@ -52,7 +52,7 @@ def test_delta_matches_fla(seed, eta, d, m, length):
         output_final_state=True,
     )
     model = ModelDelta(d=d, m=m, eta=eta)
-    model.load_state_dict({"W": initial})
+    model.load_state_dict({"W": torch.tensor(initial, dtype=torch.float32)})
     predictions = []
     for k, v, q in zip(keys, values, queries):
         model.feed_data({"k": k, "v": v})

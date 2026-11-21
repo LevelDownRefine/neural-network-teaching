@@ -77,10 +77,10 @@ class ModelDelta(ModelBase):
         return {"W": self.W.detach().clone()}
 
     def load_state_dict(self, state):
-        weights = torch.as_tensor(state["W"])
+        weights = state["W"]
         if weights.shape != self.W.shape or not weights.isfinite().all():
             raise ValueError("weights must be finite and match model dimensions")
-        result = super().load_state_dict(dict(state, W=weights))
+        result = super().load_state_dict(state)
         self._data = self._results = None
         return result
 
