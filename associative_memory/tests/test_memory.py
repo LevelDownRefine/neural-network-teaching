@@ -114,7 +114,7 @@ def test_hebbian_attention_readout():
 
     generator = torch.Generator().manual_seed(123)
     k, v, q = [
-        torch.randn(shape, generator=generator, dtype=torch.float64)
+        torch.randn(shape, generator=generator, dtype=torch.float32)
         for shape in [(7, 4), (7, 3), (5, 4)]
     ]
     model = ModelHebbian(d=4, m=3)

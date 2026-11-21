@@ -102,7 +102,7 @@ def test_replay_workload():
         assert updates == (128 if condition == "plain" else 256)
         np.testing.assert_array_equal(snapshot["W"], original)
         assert model.W.numel() == 32 * 64
-        assert model.W.nbytes == 32 * 64 * 8
+        assert model.W.nbytes == 32 * 64 * 4
 
 
 @pytest.mark.parametrize("cls", [ModelDelta, ModelHebbian, ModelZero])

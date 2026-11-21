@@ -14,7 +14,7 @@ class ModelDelta(ModelBase):
         if not np.isfinite(eta) or eta <= 0:
             raise ValueError("eta must be finite and positive")
         self.d, self.m, self.eta = d, m, float(eta)
-        self.register_buffer("W", torch.zeros(m, d, dtype=torch.float64))
+        self.register_buffer("W", torch.zeros(m, d, dtype=torch.float32))
         self._data = None
         self._results = None
 
