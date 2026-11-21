@@ -61,3 +61,14 @@ train_epoch(trainer, keys, values, order)
 NumPy 回归测试使用提交 `960150d` 的原始实现转为 FP32 作对照（`tests/reference/numpy_memory.py`），固定 seed=123，覆盖容量、遮挡和回放。检查每步 W、连续读出和符号差异。NumPy 与 PyTorch 即使同为 FP32 也不保证逐位相同；近零读出的符号可能因舍入变化，测试会报告这类差异，不要求正确率完全相等。
 
 `Trainer` 组合 model、criterion 和 optimizer；`step(inputs, target)` 通过 `model(**inputs)` 计算，执行清梯度、反向传播和更新，返回脱离计算图的更新前损失。推理仍直接调用 model；快照分别使用 model 和 optimizer 的原生接口。
+
+作业直接使用预配置的 Trainer，无需手动选择损失或创建 SGD：
+
+```python
+from associative_memory.train import DeltaTrainer, HebbianTrainer, train_epoch
+trainer = DeltaTrainer(model, lr=0.5)  # 或 HebbianTrainer(model, lr=0.5)
+trainer.step({"q": k}, v)
+# 完整一轮：train_epoch(trainer, keys, values, order)
+```
+
+两者继承 Trainer，仅配置各自目标函数和无动量、无权重衰减的 SGD；共用 step 实现。模型与 optimizer 仍可通过 trainer.model 和 trainer.optimizer 访问。

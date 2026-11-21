@@ -14,9 +14,8 @@ import pytest
 import torch
 
 from associative_memory.data import generate_pairs
-from associative_memory.losses import delta_loss, hebbian_loss
 from associative_memory.models import ModelMemory
-from associative_memory.train import Trainer, train_epoch
+from associative_memory.train import DeltaTrainer, HebbianTrainer, train_epoch
 
 
 def legacy_class(rule):
@@ -34,11 +33,12 @@ class Comparison:
         self.old.W = self.old.W.astype(np.float32)
         self.old.eta = np.float32(self.old.eta)
         self.new = ModelMemory(d, m)
-        self.optimizer = torch.optim.SGD(self.new.parameters(), lr=0.5)
-        self.criterion = {"Delta": delta_loss, "Hebbian": hebbian_loss, "Zero": None}[
-            rule
-        ]
-        self.trainer = Trainer(self.new, self.criterion, self.optimizer)
+        trainer_class = {
+            "Delta": DeltaTrainer,
+            "Hebbian": HebbianTrainer,
+            "Zero": None,
+        }[rule]
+        self.trainer = trainer_class(self.new) if trainer_class else None
         self.weight_error = self.output_error = self.mse_error = 0.0
         self.flips = self.bits = 0
         self.accuracy_error = 0.0
@@ -47,7 +47,7 @@ class Comparison:
         for i in order:
             self.old.feed_data({"k": keys[i], "v": values[i]})
             self.old.optimize_parameters()
-            if self.criterion is not None:
+            if self.trainer is not None:
                 train_epoch(
                     self.trainer,
                     torch.tensor(keys[i : i + 1], dtype=torch.float32),

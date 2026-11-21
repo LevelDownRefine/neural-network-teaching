@@ -1,6 +1,8 @@
+import pytest
 import torch
 
-from associative_memory.train import Trainer
+from associative_memory.models import ModelMemory
+from associative_memory.train import DeltaTrainer, HebbianTrainer, Trainer
 
 
 def test_trainer_keyword_inputs_and_detached_loss():
@@ -23,3 +25,21 @@ def test_trainer_keyword_inputs_and_detached_loss():
     torch.testing.assert_close(model.weight, torch.tensor(0.8))
     trainer.step(inputs, torch.tensor(3.0))
     torch.testing.assert_close(model.weight, torch.tensor(0.96))
+
+
+@pytest.mark.parametrize("trainer_class", [DeltaTrainer, HebbianTrainer])
+@pytest.mark.parametrize("lr", [0.25, 0.5, 1.0])
+def test_rule_trainers_match_explicit_updates(trainer_class, lr):
+    model = ModelMemory(2, 1)
+    model.load_state_dict({"W": torch.tensor([[0.2, -0.3]])})
+    expected = model.W.detach().clone()
+    trainer = trainer_class(model, lr=lr)
+    for k, v in [
+        (torch.tensor([0.6, 0.8]), torch.ones(1)),
+        (torch.tensor([1.0, 0.0]), -torch.ones(1)),
+    ]:
+        residual = v - expected @ k if trainer_class is DeltaTrainer else v
+        expected += lr * torch.outer(residual, k)
+        loss = trainer.step({"q": k}, v)
+        assert not loss.requires_grad
+        torch.testing.assert_close(model.W, expected)

@@ -1,5 +1,9 @@
 """Training helpers shared by associative-memory experiments."""
 
+import torch
+
+from .losses import delta_loss, hebbian_loss
+
 
 class Trainer:
     """Compose a model, objective and optimizer without changing their APIs."""
@@ -17,6 +21,22 @@ class Trainer:
         loss.backward()
         self.optimizer.step()
         return loss.detach()
+
+
+class DeltaTrainer(Trainer):
+    """Delta rule through half squared error and plain SGD."""
+
+    def __init__(self, model, lr=0.5):
+        super().__init__(model, delta_loss, torch.optim.SGD(model.parameters(), lr=lr))
+
+
+class HebbianTrainer(Trainer):
+    """Hebbian rule through negative correlation and plain SGD."""
+
+    def __init__(self, model, lr=0.5):
+        super().__init__(
+            model, hebbian_loss, torch.optim.SGD(model.parameters(), lr=lr)
+        )
 
 
 def train_epoch(trainer, keys, values, order):
