@@ -73,10 +73,8 @@ class ModelDelta(ModelBase):
         self.W.zero_()
         self._data = self._results = None
 
-    def _save_to_state_dict(self, destination, prefix, keep_vars):
-        super()._save_to_state_dict(destination, prefix, keep_vars)
-        # Replay branches need independent snapshots, including in nested modules.
-        destination[prefix + "W"] = destination[prefix + "W"].clone()
+    def state_dict(self):
+        return {"W": self.W.detach().clone()}
 
     def load_state_dict(self, state):
         weights = torch.as_tensor(state["W"])

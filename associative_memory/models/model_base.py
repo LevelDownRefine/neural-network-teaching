@@ -18,3 +18,9 @@ class ModelBase(nn.Module):
 
     def reset(self):
         pass
+
+    def state_dict(self):
+        return super().state_dict()
+
+    def load_state_dict(self, state):
+        return super().load_state_dict(state)
