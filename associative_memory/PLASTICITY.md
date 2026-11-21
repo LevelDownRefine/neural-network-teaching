@@ -1,4 +1,4 @@
-# 从 loss 到 Hebbian 与 Delta 更新
+# Hebbian 与 Delta 本质
 
 两者共用前向计算、链式法则和普通 SGD 更新（k、v 视为常量）：
 
@@ -32,8 +32,8 @@ $$
 
 | 方法 | 权重 $W_i$ |
 | --- | --- |
-| 相似度检索（Top-1） | $W_i=\delta_{i,i^*},\quad i^*=\arg\max_j\frac{q^\top k_j}{\lVert q\rVert\lVert k_j\rVert}$ |
+| 相似度检索（Top-1） | $W_i=\delta_{i,i^{\ast}},\quad i^{\ast}=\arg\max_j\frac{q^\top k_j}{\lVert q\rVert\lVert k_j\rVert}$ |
 | Softmax Attention | $W_i=\frac{\exp(q^\top k_i/\sqrt d)}{\sum_j\exp(q^\top k_j/\sqrt d)}$ |
 | Hebbian | $W_i=\eta q^\top k_i$ |
 
-$\delta_{i,i^*}$ 在 $i=i^*$ 时为 1，否则为 0；相似度检索假设向量非零，并列时选取一项。Hebbian 一行假设记忆矩阵从零开始，以固定学习率累加所列配对。
+$\delta_{i,i^{\ast}}$ 在 $i=i^{\ast}$ 时为 1，否则为 0；相似度检索假设向量非零，并列时选取一项。Hebbian 一行假设记忆矩阵从零开始，以固定学习率累加所列配对。
