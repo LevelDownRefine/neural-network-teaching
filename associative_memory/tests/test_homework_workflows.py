@@ -12,13 +12,18 @@ def pairs(rng, p=32, d=64, m=32):
 
 
 def write(model, k, v):
-    model.feed_data({"k": torch.as_tensor(k), "v": torch.as_tensor(v)})
+    model.feed_data(
+        {
+            "k": torch.as_tensor(k, dtype=torch.float32),
+            "v": torch.as_tensor(v, dtype=torch.float32),
+        }
+    )
     model.optimize_parameters()
 
 
 def score(model, q, v):
     before = model.state_dict()
-    model.feed_data({"q": torch.as_tensor(q)})
+    model.feed_data({"q": torch.as_tensor(q, dtype=torch.float32)})
     model.test()
     result = {key: value.numpy() for key, value in model.current_results().items()}
     np.testing.assert_array_equal(model.W, before["W"])
@@ -112,9 +117,14 @@ def test_input_and_state_contracts(cls):
     with pytest.raises(RuntimeError):
         model.optimize_parameters()
     with pytest.raises(ValueError):
-        model.feed_data({"k": torch.as_tensor([1, 0]), "v": torch.as_tensor([np.nan])})
+        model.feed_data(
+            {
+                "k": torch.as_tensor([1, 0], dtype=torch.float32),
+                "v": torch.as_tensor([np.nan], dtype=torch.float32),
+            }
+        )
     with pytest.raises(ValueError):
-        model.feed_data({"q": torch.as_tensor([[1, 0, 0]])})
+        model.feed_data({"q": torch.as_tensor([[1, 0, 0]], dtype=torch.float32)})
     with pytest.raises(ValueError):
         model.load_state_dict({"W": torch.zeros(2, 1)})
     with pytest.raises(TypeError, match="torch tensors"):
@@ -123,9 +133,14 @@ def test_input_and_state_contracts(cls):
     model.load_state_dict(state)
     state["W"].fill_(9)
     np.testing.assert_array_equal(model.W, [[1, 1]])
-    model.feed_data({"q": torch.as_tensor([1, 0])})
+    model.feed_data({"q": torch.as_tensor([1, 0], dtype=torch.float32)})
     model.test()
-    model.feed_data({"k": torch.as_tensor([1, 0]), "v": torch.as_tensor([1])})
+    model.feed_data(
+        {
+            "k": torch.as_tensor([1, 0], dtype=torch.float32),
+            "v": torch.as_tensor([1], dtype=torch.float32),
+        }
+    )
     with pytest.raises(RuntimeError):
         model.current_results()
     with pytest.raises(RuntimeError):

@@ -1,9 +1,15 @@
 """Common model interface, following KAIR naming conventions."""
 
-from torch import nn
+import torch
 
 
-class ModelBase(nn.Module):
+class ModelBase:
+    def __init__(self, device="cpu"):
+        self.device = torch.device(device)
+
+    def init_train(self):
+        pass
+
     def feed_data(self, data):
         pass
 
@@ -20,7 +26,9 @@ class ModelBase(nn.Module):
         pass
 
     def state_dict(self):
-        return super().state_dict()
+        return {
+            key: value.detach().clone() for key, value in self.netG.state_dict().items()
+        }
 
     def load_state_dict(self, state):
-        return super().load_state_dict(state)
+        return self.netG.load_state_dict(state)

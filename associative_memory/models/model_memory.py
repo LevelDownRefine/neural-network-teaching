@@ -1,22 +1,31 @@
 """Delta, Hebbian and no-write associative memory models."""
 
-import numpy as np
+import math
+
 import torch
 
 from .model_base import ModelBase
+from .network_memory import MemoryNetwork
 
 
 class ModelDelta(ModelBase):
-    def __init__(self, d=64, m=32, eta=0.5):
-        super().__init__()
+    def __init__(self, d=64, m=32, eta=0.5, device="cpu"):
+        super().__init__(device)
         if not isinstance(d, int) or not isinstance(m, int) or min(d, m) <= 0:
             raise ValueError("d and m must be positive integers")
-        if not np.isfinite(eta) or eta <= 0:
+        if not math.isfinite(eta) or eta <= 0:
             raise ValueError("eta must be finite and positive")
         self.d, self.m, self.eta = d, m, float(eta)
-        self.register_buffer("W", torch.zeros(m, d, dtype=torch.float32))
+        self.netG = MemoryNetwork(d, m).to(self.device)
         self._data = None
         self._results = None
+
+    @property
+    def W(self):
+        return self.netG.W
+
+    def init_train(self):
+        self.netG.train()
 
     def feed_data(self, data):
         """Accept {k, v} for a training pair or {q} for retrieval.
@@ -27,17 +36,20 @@ class ModelDelta(ModelBase):
             raise ValueError("provide exactly {k, v} or {q}")
         if any(not isinstance(value, torch.Tensor) for value in data.values()):
             raise TypeError("model inputs must be torch tensors")
-        copied = {key: value.detach().to(self.W).clone() for key, value in data.items()}
-        if any(not torch.isfinite(value).all() for value in copied.values()):
+        inputs = {key: value.to(self.device) for key, value in data.items()}
+        assert all(value.dtype == torch.float32 for value in inputs.values()), (
+            "inputs must be float32"
+        )
+        if any(not torch.isfinite(value).all() for value in inputs.values()):
             raise ValueError("data must be finite")
-        if "k" in copied:
-            if copied["k"].shape != (self.d,) or copied["v"].shape != (self.m,):
+        if "k" in inputs:
+            if inputs["k"].shape != (self.d,) or inputs["v"].shape != (self.m,):
                 raise ValueError("training requires one k (d,) and one v (m,)")
         else:
-            q = copied["q"]
+            q = inputs["q"]
             if q.ndim not in (1, 2) or q.shape[-1] != self.d:
                 raise ValueError("q must have shape (d,) or (P, d)")
-        self._data = copied
+        self._data = inputs
         self._results = None
 
     def _training_pair(self):
@@ -46,17 +58,26 @@ class ModelDelta(ModelBase):
         self._results = None
         return self._data["k"], self._data["v"]
 
+    @torch.no_grad()
     def optimize_parameters(self):
         k, v = self._training_pair()
-        error = v - self.W @ k
-        self.W += self.eta * torch.outer(error, k)
+        error = v - self.netG_forward()
+        self.netG.W += self.eta * torch.outer(error, k)
+
+    def netG_forward(self):
+        q = self._data["q"] if "q" in self._data else self._data["k"]
+        return self.netG(q)
 
     @torch.no_grad()
     def test(self):
         """Retrieve without changing weights; zero output maps to +1."""
         if self._data is None or "q" not in self._data:
             raise RuntimeError("feed queries before test")
-        z = self._data["q"] @ self.W.T
+        self.netG.eval()
+        try:
+            z = self.netG_forward()
+        finally:
+            self.netG.train()
         self._results = {"z": z, "v_hat": torch.where(z >= 0, 1, -1)}
 
     def current_results(self):
@@ -67,9 +88,6 @@ class ModelDelta(ModelBase):
     def reset(self):
         self.W.zero_()
         self._data = self._results = None
-
-    def state_dict(self):
-        return {"W": self.W.detach().clone()}
 
     def load_state_dict(self, state):
         if set(state) != {"W"}:
@@ -84,13 +102,15 @@ class ModelDelta(ModelBase):
 
 
 class ModelHebbian(ModelDelta):
+    @torch.no_grad()
     def optimize_parameters(self):
         k, v = self._training_pair()
-        self.W += self.eta * torch.outer(v, k)
+        self.netG.W += self.eta * torch.outer(v, k)
 
 
 class ModelZero(ModelDelta):
     """No-write baseline, initialized at zero like the other models."""
 
+    @torch.no_grad()
     def optimize_parameters(self):
         self._training_pair()

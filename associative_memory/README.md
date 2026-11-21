@@ -14,6 +14,7 @@ import torch
 from associative_memory.models import ModelDelta
 
 model = ModelDelta(d=64, m=32, eta=0.5)
+model.init_train()
 rng = torch.Generator().manual_seed(42)
 k = (2 * torch.randint(2, (64,), generator=rng) - 1).float() / 8
 v = (2 * torch.randint(2, (32,), generator=rng) - 1).float()
@@ -47,3 +48,11 @@ Delta 与固定版本 FLA 官方 Gated DeltaNet 参考函数比较每步读出�
 `data.py` 的 `generate_pairs(rng, p, d, m)` 返回 K、V 和初始随机写入顺序。
 实验脚本负责创建 `rng = np.random.default_rng(seed)`，并将生成的数据和顺序共享给各方法。
 多轮训练的新顺序、遮挡和回放由实验脚本使用持有的 rng 生成。
+
+## KAIR 风格的职责划分
+
+ModelBase 是普通控制类，负责 device 和训练/测试接口。ModelDelta 持有 netG，MemoryNetwork 作为 nn.Module 管理 FP32 权重 W 和矩阵读出。W 属性提供实验指标访问入口。
+
+feed_data 只接收 FP32 Tensor，校验后移动到 device，保留计算图。init_train 设置训练模式。optimize_parameters 在 no_grad 下按作业规则更新权重。test 将 netG 切换为 eval，在 no_grad 下读出，之后恢复 train；current_results 返回 detached CPU Tensor。
+
+state_dict()/load_state_dict(state) 和 reset 是本作业为回放实验保留的接口。快照复制由控制类完成，内部 netG 使用 PyTorch 标准接口。未来 attention 控制类可使用相同流程，将可训练网络放入 netG，并自行实现 loss 和 optimizer。

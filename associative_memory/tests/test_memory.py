@@ -55,9 +55,14 @@ def test_delta_matches_fla(seed, eta, d, m, length):
     model.load_state_dict({"W": torch.tensor(initial, dtype=torch.float32)})
     predictions = []
     for k, v, q in zip(keys, values, queries):
-        model.feed_data({"k": torch.as_tensor(k), "v": torch.as_tensor(v)})
+        model.feed_data(
+            {
+                "k": torch.as_tensor(k, dtype=torch.float32),
+                "v": torch.as_tensor(v, dtype=torch.float32),
+            }
+        )
         model.optimize_parameters()
-        model.feed_data({"q": torch.as_tensor(q)})
+        model.feed_data({"q": torch.as_tensor(q, dtype=torch.float32)})
         model.test()
         predictions.append(model.current_results()["z"])
     np.testing.assert_allclose(
@@ -73,10 +78,15 @@ def test_hebbian_closed_form(eta):
     values = rng.choice([-1.0, 1.0], (32, 32))
     model = ModelHebbian(eta=eta)
     for k, v in zip(keys, values):
-        model.feed_data({"k": torch.as_tensor(k), "v": torch.as_tensor(v)})
+        model.feed_data(
+            {
+                "k": torch.as_tensor(k, dtype=torch.float32),
+                "v": torch.as_tensor(v, dtype=torch.float32),
+            }
+        )
         model.optimize_parameters()
     np.testing.assert_allclose(model.W, eta * values.T @ keys, atol=1e-14)
-    model.feed_data({"q": torch.as_tensor(keys)})
+    model.feed_data({"q": torch.as_tensor(keys, dtype=torch.float32)})
     model.test()
     np.testing.assert_allclose(
         model.current_results()["z"], eta * (keys @ keys.T) @ values, atol=1e-14
@@ -87,7 +97,10 @@ def test_hebbian_closed_form(eta):
 def test_snapshot_and_reset(cls):
     model = cls(d=2, m=3, eta=0.25)
     model.feed_data(
-        {"k": torch.as_tensor([1.0, 0.0]), "v": torch.as_tensor([-1.0, 1.0, -1.0])}
+        {
+            "k": torch.as_tensor([1.0, 0.0], dtype=torch.float32),
+            "v": torch.as_tensor([-1.0, 1.0, -1.0], dtype=torch.float32),
+        }
     )
     model.optimize_parameters()
     state = model.state_dict()
@@ -100,7 +113,9 @@ def test_snapshot_and_reset(cls):
     np.testing.assert_array_equal(model.W, state["W"])
     assert model.eta == 0.25
     before = model.W.clone()
-    model.feed_data({"q": torch.as_tensor([[1.0, 0.0], [0.0, 1.0]])})
+    model.feed_data(
+        {"q": torch.as_tensor([[1.0, 0.0], [0.0, 1.0]], dtype=torch.float32)}
+    )
     model.test()
     result = model.current_results()
     np.testing.assert_array_equal(model.W, before)
@@ -154,3 +169,30 @@ def test_failed_load_preserves_weights_and_cached_results():
         model.current_results()
     with pytest.raises(RuntimeError):
         model.test()
+
+
+def test_kair_controller_network_lifecycle():
+    from torch import nn
+
+    model = ModelDelta(d=2, m=1)
+    assert not isinstance(model, nn.Module)
+    assert isinstance(model.netG, nn.Module)
+    model.init_train()
+    q = torch.ones(2, requires_grad=True)
+    model.feed_data({"q": q})
+    assert model._data["q"] is q
+    output = model.netG_forward()
+    assert output.requires_grad
+    modes = []
+    handle = model.netG.register_forward_pre_hook(
+        lambda network, inputs: modes.append(network.training)
+    )
+    model.test()
+    handle.remove()
+    assert modes == [False]
+    assert model.netG.training
+    results = model.current_results()
+    assert all(
+        value.device.type == "cpu" and not value.requires_grad
+        for value in results.values()
+    )
