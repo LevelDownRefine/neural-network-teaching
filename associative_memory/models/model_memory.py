@@ -15,6 +15,10 @@ class ModelMemory(torch.nn.Module):
 
     def forward(self, **kwargs):
         q = kwargs["q"]
+        self._validate_input(q)
+        return q @ self.W.T
+
+    def _validate_input(self, q):
         if not isinstance(q, torch.Tensor):
             raise TypeError("inputs must be torch tensors")
         assert q.dtype == torch.float32, "inputs must be float32"
@@ -22,4 +26,3 @@ class ModelMemory(torch.nn.Module):
             raise ValueError("invalid input shape")
         if not q.isfinite().all():
             raise ValueError("inputs must be finite")
-        return q @ self.W.T
