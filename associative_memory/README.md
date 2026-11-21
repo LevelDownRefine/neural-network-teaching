@@ -4,8 +4,6 @@
 
 - `ModelMemory`：零初始化的可训练参数 W，`forward(**kwargs)`（读取 q） 返回 `q @ W.T`，支持单条或批量查询。
 - `delta_loss` / `hebbian_loss`：逐对训练的目标函数，配合普通 SGD 实现两种塑性规则。
-- `ModelAttention`：`forward(**kwargs)`（读取 q/k/v） 直接计算单头 scaled dot-product attention，无投影参数，K/V 由调用方持有。
-- `ModelBase`：只保留维度和输入检查，状态管理使用 nn.Module 原生接口。
 
 ```python
 from copy import deepcopy
@@ -38,14 +36,6 @@ Hebbian 目标为 `-(pred * target).sum()`，得到 `W += lr * outer(v, k)`；�
 
 不再使用 feed_data、optimize_parameters、test、current_results 或 reset。训练轮数、顺序、设备搬运、归一化和评估由调用方控制。重新开始可创建新模型。需要独立快照时必须 deepcopy，原生 state_dict 的张量共享模型存储。若使用带动量的优化器，恢复训练还应保存和恢复 optimizer.state_dict()。
 
-```python
-from associative_memory.models import ModelAttention
-attention = ModelAttention(d=64, m=32)
-z = attention(q=q, k=keys, v=values)
-```
-
-Attention 使用默认 `1/sqrt(d)` 缩放和零 dropout，支持单条或批量 q，K/V 必须是非空、等长矩阵。它可以向 Q/K/V 上游的可训练投影传播梯度。标准缩放对已经单位归一化的线索会产生较平坦的 softmax，比较实验应说明缩放差异和存储成本：FP32 的 W 为 `4*m*d` 字节，显式 K/V 为 `4*P*(d+m)` 字节。
-
 ## 数据与测试
 
 `data.py` 的 `generate_pairs(rng, p, d, m)` 返回 K、V 和随机写入顺序。随机数生成器由实验持有，各方法共享数据与顺序；正式实验脚本另行提交。
@@ -54,13 +44,13 @@ Attention 使用默认 `1/sqrt(d)` 缩放和零 dropout，支持单条或批量 
 uv run --locked --extra cpu pytest associative_memory/tests -q
 ```
 
-测试保留固定版本 FLA 官方参考函数对照（源码和 MIT 许可证位于 tests/reference），比较 Delta 每步读出和最终权重；另验证两种 SGD 更新与显式公式一致、Hebbian 闭式解、原生状态恢复及模块组合、Attention 梯度传播，以及容量、遮挡和回放流程。
+测试保留固定版本 FLA 官方参考函数对照（源码和 MIT 许可证位于 tests/reference），比较 Delta 每步读出和最终权重；另验证两种 SGD 更新与显式公式一致、Hebbian 闭式解、原生状态恢复及模块组合，以及容量、遮挡和回放流程。
 
-统一调用可使用 `model(**batch)`：Memory 读取 `q`，Attention 读取 `q`、`k`、`v`，其余字段忽略。同一检索 batch 可传给两者；必需字段缺失会抛出 KeyError。
+调用使用 `model(**batch)`，读取 `q`，忽略其余字段；缺少 `q` 会抛出 KeyError。ModelMemory 直接继承 nn.Module，保留维度、FP32 和有限值检查。
 
 ## 公共训练循环
 
-`train.py` 提供 `train_epoch(trainer, keys, values, order)`，按 order 逐对更新一轮（允许重复索引用于回放）。输入使用同设备 Tensor。函数不生成随机数、不创建 optimizer、不负责评估或保存；跨轮使用同一个 optimizer，保留其状态。Zero 和无参数 Attention 不调用训练函数。
+`train.py` 提供 `train_epoch(trainer, keys, values, order)`，按 order 逐对更新一轮（允许重复索引用于回放）。输入使用同设备 Tensor。函数不生成随机数、不创建 optimizer、不负责评估或保存；跨轮使用同一个 optimizer，保留其状态。Zero 基线不调用训练函数。
 
 ```python
 from associative_memory.train import Trainer, train_epoch
