@@ -94,7 +94,7 @@ def test_snapshot_and_reset(cls):
     np.testing.assert_array_equal(model.W, np.zeros((3, 2)))
     with pytest.raises(RuntimeError):
         model.current_results()
-    model.load_state_dict(state)
+    model.load_state_dict(state=state)
     np.testing.assert_array_equal(model.W, state["W"])
     assert model.eta == 0.25
     before = model.W.clone()

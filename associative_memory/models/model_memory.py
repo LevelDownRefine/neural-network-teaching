@@ -78,13 +78,11 @@ class ModelDelta(ModelBase):
         # Replay branches need independent snapshots, including in nested modules.
         destination[prefix + "W"] = destination[prefix + "W"].clone()
 
-    def load_state_dict(self, state_dict, strict=True, assign=False):
-        if "W" in state_dict:
-            weights = torch.as_tensor(state_dict["W"])
-            if weights.shape != self.W.shape or not weights.isfinite().all():
-                raise ValueError("weights must be finite and match model dimensions")
-            state_dict = dict(state_dict, W=weights.clone())
-        result = super().load_state_dict(state_dict, strict=strict, assign=assign)
+    def load_state_dict(self, state):
+        weights = torch.as_tensor(state["W"])
+        if weights.shape != self.W.shape or not weights.isfinite().all():
+            raise ValueError("weights must be finite and match model dimensions")
+        result = super().load_state_dict(dict(state, W=weights))
         self._data = self._results = None
         return result
 
