@@ -60,11 +60,14 @@ uv run --locked --extra cpu pytest associative_memory/tests -q
 
 ## 公共训练循环
 
-`train.py` 提供 `train_epoch(model, optimizer, criterion, keys, values, order)`，按 order 逐对更新一轮（允许重复索引用于回放）。输入使用同设备 Tensor。函数不生成随机数、不创建 optimizer、不负责评估或保存；跨轮使用同一个 optimizer，保留其状态。Zero 和无参数 Attention 不调用训练函数。
+`train.py` 提供 `train_epoch(trainer, keys, values, order)`，按 order 逐对更新一轮（允许重复索引用于回放）。输入使用同设备 Tensor。函数不生成随机数、不创建 optimizer、不负责评估或保存；跨轮使用同一个 optimizer，保留其状态。Zero 和无参数 Attention 不调用训练函数。
 
 ```python
-from associative_memory.train import train_epoch
-train_epoch(model, optimizer, criterion, keys, values, order)
+from associative_memory.train import Trainer, train_epoch
+trainer = Trainer(model, criterion, optimizer)
+train_epoch(trainer, keys, values, order)
 ```
 
 NumPy 回归测试使用提交 `960150d` 的原始实现转为 FP32 作对照（`tests/reference/numpy_memory.py`），固定 seed=123，覆盖容量、遮挡和回放。检查每步 W、连续读出和符号差异。NumPy 与 PyTorch 即使同为 FP32 也不保证逐位相同；近零读出的符号可能因舍入变化，测试会报告这类差异，不要求正确率完全相等。
+
+`Trainer` 组合 model、criterion 和 optimizer；`step(inputs, target)` 通过 `model(**inputs)` 计算，执行清梯度、反向传播和更新，返回脱离计算图的更新前损失。推理仍直接调用 model；快照分别使用 model 和 optimizer 的原生接口。

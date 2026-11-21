@@ -8,7 +8,7 @@ import torch
 
 from associative_memory.losses import delta_loss, hebbian_loss
 from associative_memory.models import ModelMemory
-from associative_memory.train import train_epoch
+from associative_memory.train import Trainer, train_epoch
 
 
 def pairs(rng, p=32, d=64, m=32):
@@ -22,12 +22,10 @@ def write(model, k, v, criterion=delta_loss):
     if criterion is None:
         return
     optimizer = torch.optim.SGD(model.parameters(), lr=0.5)
-    optimizer.zero_grad()
-    criterion(
-        model(q=torch.as_tensor(k, dtype=torch.float32)),
+    Trainer(model, criterion, optimizer).step(
+        {"q": torch.as_tensor(k, dtype=torch.float32)},
         torch.as_tensor(v, dtype=torch.float32),
-    ).backward()
-    optimizer.step()
+    )
 
 
 @torch.no_grad()
@@ -56,9 +54,7 @@ def test_capacity_workload(d, p):
         if criterion is not None:
             optimizer = torch.optim.SGD(model.parameters(), lr=0.5)
             train_epoch(
-                model,
-                optimizer,
-                criterion,
+                Trainer(model, criterion, optimizer),
                 torch.tensor(k, dtype=torch.float32),
                 torch.tensor(v, dtype=torch.float32),
                 range(p),
@@ -140,11 +136,12 @@ def test_train_epoch_order_and_optimizer_state(criterion):
     values = torch.tensor([[1.0], [-1.0]])
     model = ModelMemory(2, 1)
     optimizer = torch.optim.SGD(model.parameters(), lr=0.2, momentum=0.5)
+    trainer = Trainer(model, criterion, optimizer)
     expected = torch.zeros(1, 2)
     velocity = torch.zeros_like(expected)
     for order in ([1, 0, 1], [0, 1]):
         model.eval()
-        train_epoch(model, optimizer, criterion, keys, values, order)
+        train_epoch(trainer, keys, values, order)
         for i in order:
             residual = (
                 expected @ keys[i] - values[i]

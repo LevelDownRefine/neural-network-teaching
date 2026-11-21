@@ -16,7 +16,7 @@ import torch
 from associative_memory.data import generate_pairs
 from associative_memory.losses import delta_loss, hebbian_loss
 from associative_memory.models import ModelMemory
-from associative_memory.train import train_epoch
+from associative_memory.train import Trainer, train_epoch
 
 
 def legacy_class(rule):
@@ -38,6 +38,7 @@ class Comparison:
         self.criterion = {"Delta": delta_loss, "Hebbian": hebbian_loss, "Zero": None}[
             rule
         ]
+        self.trainer = Trainer(self.new, self.criterion, self.optimizer)
         self.weight_error = self.output_error = self.mse_error = 0.0
         self.flips = self.bits = 0
         self.accuracy_error = 0.0
@@ -48,9 +49,7 @@ class Comparison:
             self.old.optimize_parameters()
             if self.criterion is not None:
                 train_epoch(
-                    self.new,
-                    self.optimizer,
-                    self.criterion,
+                    self.trainer,
                     torch.tensor(keys[i : i + 1], dtype=torch.float32),
                     torch.tensor(values[i : i + 1], dtype=torch.float32),
                     [0],
