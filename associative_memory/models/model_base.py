@@ -1,7 +1,9 @@
 """Common model interface, following KAIR naming conventions."""
 
+from torch import nn
 
-class ModelBase:
+
+class ModelBase(nn.Module):
     def feed_data(self, data):
         pass
 
@@ -18,7 +20,7 @@ class ModelBase:
         pass
 
     def state_dict(self):
-        pass
+        return super().state_dict()
 
     def load_state_dict(self, state):
-        pass
+        return super().load_state_dict(state)

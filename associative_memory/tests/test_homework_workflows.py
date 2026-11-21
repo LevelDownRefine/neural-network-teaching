@@ -2,6 +2,7 @@
 
 import numpy as np
 import pytest
+import torch
 
 from associative_memory.models import ModelDelta, ModelHebbian, ModelZero
 
@@ -11,15 +12,15 @@ def pairs(rng, p=32, d=64, m=32):
 
 
 def write(model, k, v):
-    model.feed_data({"k": k, "v": v})
+    model.feed_data({"k": torch.as_tensor(k), "v": torch.as_tensor(v)})
     model.optimize_parameters()
 
 
 def score(model, q, v):
     before = model.state_dict()
-    model.feed_data({"q": q})
+    model.feed_data({"q": torch.as_tensor(q)})
     model.test()
-    result = model.current_results()
+    result = {key: value.numpy() for key, value in model.current_results().items()}
     np.testing.assert_array_equal(model.W, before["W"])
     assert result["z"].shape == v.shape
     assert np.isfinite(result["z"]).all()
@@ -69,7 +70,7 @@ def test_replay_workload():
         for i in rng.permutation(32):
             write(model, ka[i], va[i])
     snapshot = model.state_dict()
-    original = snapshot["W"].copy()
+    original = snapshot["W"].clone()
     orders = [rng.permutation(32) for _ in range(4)]
     for condition in ("plain", "matched", 4, 16, 32):
         model.load_state_dict(snapshot)
@@ -101,8 +102,8 @@ def test_replay_workload():
                     updates += 1
         assert updates == (128 if condition == "plain" else 256)
         np.testing.assert_array_equal(snapshot["W"], original)
-        assert model.W.size == 32 * 64
-        assert model.W.nbytes == 32 * 64 * 8
+        assert model.W.numel() == 32 * 64
+        assert model.W.nbytes == 32 * 64 * 4
 
 
 @pytest.mark.parametrize("cls", [ModelDelta, ModelHebbian, ModelZero])
@@ -111,18 +112,20 @@ def test_input_and_state_contracts(cls):
     with pytest.raises(RuntimeError):
         model.optimize_parameters()
     with pytest.raises(ValueError):
-        model.feed_data({"k": [1, 0], "v": [np.nan]})
+        model.feed_data({"k": torch.as_tensor([1, 0]), "v": torch.as_tensor([np.nan])})
     with pytest.raises(ValueError):
-        model.feed_data({"q": [[1, 0, 0]]})
+        model.feed_data({"q": torch.as_tensor([[1, 0, 0]])})
     with pytest.raises(ValueError):
-        model.load_state_dict({"W": np.zeros((2, 1))})
-    state = {"W": np.ones((1, 2))}
+        model.load_state_dict({"W": torch.zeros(2, 1)})
+    with pytest.raises(TypeError, match="torch tensors"):
+        model.feed_data({"q": np.zeros(2)})
+    state = {"W": torch.ones(1, 2)}
     model.load_state_dict(state)
-    state["W"].fill(9)
+    state["W"].fill_(9)
     np.testing.assert_array_equal(model.W, [[1, 1]])
-    model.feed_data({"q": [1, 0]})
+    model.feed_data({"q": torch.as_tensor([1, 0])})
     model.test()
-    model.feed_data({"k": [1, 0], "v": [1]})
+    model.feed_data({"k": torch.as_tensor([1, 0]), "v": torch.as_tensor([1])})
     with pytest.raises(RuntimeError):
         model.current_results()
     with pytest.raises(RuntimeError):
