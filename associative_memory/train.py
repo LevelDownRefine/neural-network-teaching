@@ -58,6 +58,18 @@ class HebbianTrainer(Trainer):
         return -(pred * target).sum()
 
 
+class ZeroTrainer(Trainer):
+    """No-write baseline: preserve the supplied model, without an optimizer."""
+
+    def __init__(self, model):
+        super().__init__(model, criterion=None, optimizer=None)
+
+    @torch.no_grad()
+    def step(self, inputs, target):
+        """Validate the pair without updating weights; there is no loss to return."""
+        self._validate_loss_inputs(self.model(**inputs), target)
+
+
 def train_epoch(trainer, keys, values, order):
     """Train once per supplied index; repeated indices support replay.
 

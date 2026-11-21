@@ -15,7 +15,12 @@ import torch
 
 from associative_memory.data import generate_pairs
 from associative_memory.models import ModelMemory
-from associative_memory.train import DeltaTrainer, HebbianTrainer, train_epoch
+from associative_memory.train import (
+    DeltaTrainer,
+    HebbianTrainer,
+    ZeroTrainer,
+    train_epoch,
+)
 
 
 def legacy_class(rule):
@@ -36,7 +41,7 @@ class Comparison:
         trainer_class = {
             "Delta": DeltaTrainer,
             "Hebbian": HebbianTrainer,
-            "Zero": None,
+            "Zero": ZeroTrainer,
         }[rule]
         self.trainer = trainer_class(self.new) if trainer_class else None
         self.weight_error = self.output_error = self.mse_error = 0.0
