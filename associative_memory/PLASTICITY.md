@@ -22,24 +22,9 @@ Delta 一栏采用 [DeltaNet（Schlag 等，2021）](https://proceedings.mlr.pre
 
 ## 与常见查询方式的区别
 
-相似度检索和标准 Attention 保留各条 K、V，查询时匹配 key，再选取或组合 value。我们的 Hebbian / Delta 将配对写入记忆矩阵 W，查询时直接计算 Wq，不再读取原始 K、V，也不显式计算各条记忆的权重 α。
+| 方法 | 查询方式 |
+| --- | --- |
+| 相似度检索 / Attention | 先计算匹配权重 $W=f(q,K)$，再得到 $z=WV$。 |
+| Hebbian / Delta | 直接维护记忆矩阵 W，查询时计算 $z=Wq$。 |
 
-以下 K、V 分别由 key、value 按列组成：
-
-| 方法 | 存储内容 | 查询计算 |
-| --- | --- | --- |
-| 相似度检索（Top-1） | 各条 K、V | $\alpha=\mathrm{hardmax}(\widehat K^\top\widehat q),\quad z=V\alpha$ |
-| Softmax Attention | 各条 K、V | $\alpha=\mathrm{softmax}(K^\top q/\sqrt d),\quad z=V\alpha$ |
-| Hebbian / Delta | 共同写入的记忆矩阵 W | $z=Wq$ |
-
-带帽表示单位归一化；hardmax 将最大分数所在位置置为 1，其余置为 0，并列时选取一项。检索中的 α 只是选择结果的数学表示，实现时可直接返回选中的 value。
-
-**联系：** 从零开始、固定学习率写入时，Hebbian 可展开为：
-
-$$
-W=\eta VK^\top,\qquad z=Wq=V(\eta K^\top q).
-$$
-
-因此它等价于用点积系数组合 value，但实际实现将配对预先累加到 W，并不保存或显式计算 α。Delta 同样直接读出 Wq，只是用残差更新 W，不能套用 Hebbian 的上述展开式。
-
-**区别：** 显式 K、V 的存储随条目数增长；固定维度的 W 大小不变，但不同配对共享权重，可能相互干扰。Hebbian 与 Delta 在这里的查询方式相同，区别仍在写入规则。
+前者的 W 是查询时生成的匹配权重，后者的 W 是写入时更新的记忆矩阵。前者 K、V 按行存储，输出 z 为行向量。
