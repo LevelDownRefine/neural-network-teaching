@@ -28,13 +28,13 @@ $$
 \boxed{z=\sum_{i=1}^{T}\alpha_i v_i.}
 $$
 
-$i$ 表示记忆条目（写入次序），$\alpha_i$ 是当前查询 q 对应的标量匹配系数，$v_i$ 是原始内容向量，$\alpha_i v_i$ 是该条内容对输出的贡献。
+表中 $\alpha$ 表示第 i 条记忆对应的系数，即 $\alpha=\alpha_i$；$v_i$ 为原始内容。
 
-| 方法 | 匹配系数 $\alpha_i$ |
+| 方法 | $\alpha$ |
 | --- | --- |
-| 相似度检索（Top-1） | $\alpha_i=\delta_{i,i^{\ast}},\quad i^{\ast}=\arg\max_j\frac{q^\top k_j}{\lVert q\rVert\lVert k_j\rVert}$ |
-| Softmax Attention | $\alpha_i=\frac{\exp(q^\top k_i/\sqrt d)}{\sum_j\exp(q^\top k_j/\sqrt d)}$ |
-| Hebbian | $\alpha_i=\eta k_i^\top q$ |
-| Delta | $\alpha_i=\eta k_i^\top(I-\eta k_{i+1}k_{i+1}^\top)\cdots(I-\eta k_Tk_T^\top)q$ |
+| 相似度检索（Top-1） | $\alpha=\delta_{i,i^{\ast}},\quad i^{\ast}=\arg\max_j\frac{q^\top k_j}{\lVert q\rVert\lVert k_j\rVert}$ |
+| Softmax Attention | $\alpha=\frac{\exp(q^\top k_i/\sqrt d)}{\sum_j\exp(q^\top k_j/\sqrt d)}$ |
+| Hebbian | $\alpha=\eta k_i^\top q$ |
+| Delta | $\alpha=\eta k_i^\top(I-\eta k_{i+1}k_{i+1}^\top)\cdots(I-\eta k_Tk_T^\top)q$ |
 
 $\delta_{i,i^{\ast}}$ 在 $i=i^{\ast}$ 时为 1，否则为 0；相似度检索假设向量非零，并列时选取一项。Hebbian、Delta 假设记忆矩阵从零开始、学习率固定；Delta 的矩阵乘积按后续写入顺序排列，$i=T$ 时为空乘积 I。
