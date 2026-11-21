@@ -1,18 +1,20 @@
 """Delta, Hebbian and no-write associative memory models."""
 
 import numpy as np
+import torch
 
 from .model_base import ModelBase
 
 
 class ModelDelta(ModelBase):
     def __init__(self, d=64, m=32, eta=0.5):
+        super().__init__()
         if not isinstance(d, int) or not isinstance(m, int) or min(d, m) <= 0:
             raise ValueError("d and m must be positive integers")
         if not np.isfinite(eta) or eta <= 0:
             raise ValueError("eta must be finite and positive")
         self.d, self.m, self.eta = d, m, float(eta)
-        self.W = np.zeros((m, d), dtype=np.float64)
+        self.register_buffer("W", torch.zeros(m, d, dtype=torch.float64))
         self._data = None
         self._results = None
 
@@ -24,10 +26,12 @@ class ModelDelta(ModelBase):
         if set(data) not in ({"k", "v"}, {"q"}):
             raise ValueError("provide exactly {k, v} or {q}")
         copied = {
-            key: np.array(value, dtype=self.W.dtype, copy=True)
+            key: torch.as_tensor(value, dtype=self.W.dtype, device=self.W.device)
+            .detach()
+            .clone()
             for key, value in data.items()
         }
-        if any(not np.isfinite(value).all() for value in copied.values()):
+        if any(not torch.isfinite(value).all() for value in copied.values()):
             raise ValueError("data must be finite")
         if "k" in copied:
             if copied["k"].shape != (self.d,) or copied["v"].shape != (self.m,):
@@ -48,13 +52,16 @@ class ModelDelta(ModelBase):
     def optimize_parameters(self):
         k, v = self._training_pair()
         error = v - self.W @ k
-        self.W += self.eta * np.outer(error, k)
+        self.W += self.eta * torch.outer(error, k)
+
+    def forward(self, q):
+        return q @ self.W.T
 
     def test(self):
         """Retrieve without changing weights; zero output maps to +1."""
         if self._data is None or "q" not in self._data:
             raise RuntimeError("feed queries before test")
-        z = self._data["q"] @ self.W.T
+        z = self(self._data["q"]).detach().cpu().numpy()
         self._results = {"z": z, "v_hat": np.where(z >= 0, 1, -1)}
 
     def current_results(self):
@@ -63,24 +70,29 @@ class ModelDelta(ModelBase):
         return self._results
 
     def reset(self):
-        self.W.fill(0)
+        self.W.zero_()
         self._data = self._results = None
 
-    def state_dict(self):
-        return {"W": self.W.copy()}
+    def _save_to_state_dict(self, destination, prefix, keep_vars):
+        super()._save_to_state_dict(destination, prefix, keep_vars)
+        # Replay branches need independent snapshots, including in nested modules.
+        destination[prefix + "W"] = destination[prefix + "W"].clone()
 
-    def load_state_dict(self, state):
-        weights = np.asarray(state["W"], dtype=self.W.dtype)
-        if weights.shape != self.W.shape or not np.isfinite(weights).all():
-            raise ValueError("weights must be finite and match model dimensions")
-        self.W[...] = weights
+    def load_state_dict(self, state_dict, strict=True, assign=False):
+        if "W" in state_dict:
+            weights = torch.as_tensor(state_dict["W"])
+            if weights.shape != self.W.shape or not weights.isfinite().all():
+                raise ValueError("weights must be finite and match model dimensions")
+            state_dict = dict(state_dict, W=weights.clone())
+        result = super().load_state_dict(state_dict, strict=strict, assign=assign)
         self._data = self._results = None
+        return result
 
 
 class ModelHebbian(ModelDelta):
     def optimize_parameters(self):
         k, v = self._training_pair()
-        self.W += self.eta * np.outer(v, k)
+        self.W += self.eta * torch.outer(v, k)
 
 
 class ModelZero(ModelDelta):
