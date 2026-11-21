@@ -30,3 +30,5 @@ lif/output/
 *.pyd
 lif/simulator/**/target/
 lif/simulator/dist/
+
+associative_memory/output/

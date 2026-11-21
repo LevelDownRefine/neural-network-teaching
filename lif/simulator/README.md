@@ -2,6 +2,8 @@
 
 中文交互模拟器。支持恒定／正弦电流、参数调节、四联图及脉冲统计；鼠标悬停可查看数值。导出在 exe 同目录的 output 下新建独立目录，保存 trace.csv 和 parameters.json。
 
+界面使用 CPU 软件渲染，无需 OpenGL、DirectX 或 Vulkan 渲染设备。按交互事件重绘，仿真仍由同一 Rust 核心计算。
+
 ## 下载运行
 
 从 [GitHub Releases](https://github.com/LevelDownRefine/neural-network-teaching/releases) 下载 lif-v版本号-windows-x64.zip，解压到可写目录后运行 lif.exe。无需安装 Python、Rust 或 VC++ 运行库。
@@ -29,8 +31,8 @@ cargo run --release --locked --manifest-path lif/simulator/Cargo.toml
 ```sh
 git switch main
 git pull --ff-only
-git tag lif-v0.1.0
-git push origin lif-v0.1.0
+git tag lif-v0.1.1
+git push origin lif-v0.1.1
 ```
 
 CI 全部通过后自动创建 GitHub Release，上传压缩包和校验值；标签必须与 Cargo 版本一致。

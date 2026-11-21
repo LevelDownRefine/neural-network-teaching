@@ -5,7 +5,7 @@ use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use eframe::egui::{self, Color32, FontId, RichText, Stroke};
+use egui::{Color32, FontId, RichText, Stroke};
 use egui_plot::{HLine, Line, LineStyle, Plot, PlotBounds, VLine};
 use lif_native::experiment::{Experiment, Parameters, DT, REST};
 
@@ -27,17 +27,17 @@ struct Lab {
 }
 
 impl Lab {
-    fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        load_chinese_font(&cc.egui_ctx);
-        cc.egui_ctx.set_theme(egui::ThemePreference::Dark);
+    fn new(ctx: egui::Context) -> Self {
+        load_chinese_font(&ctx);
+        ctx.set_theme(egui::ThemePreference::Dark);
         let mut visuals = egui::Visuals::dark();
         visuals.panel_fill = BG;
         visuals.window_fill = PANEL;
         visuals.extreme_bg_color = BG;
         visuals.selection.bg_fill = CYAN.gamma_multiply(0.3);
         visuals.selection.stroke.color = CYAN;
-        cc.egui_ctx.set_visuals(visuals);
-        let mut style = (*cc.egui_ctx.style()).clone();
+        ctx.set_visuals(visuals);
+        let mut style = (*ctx.style()).clone();
         style.spacing.item_spacing = egui::vec2(12.0, 10.0);
         style.spacing.slider_width = 150.0;
         style
@@ -46,7 +46,7 @@ impl Lab {
         style
             .text_styles
             .insert(egui::TextStyle::Small, FontId::proportional(11.0));
-        cc.egui_ctx.set_style(style);
+        ctx.set_style(style);
         let parameters = Parameters::default();
         let begin = Instant::now();
         let result = Experiment::run(&parameters).expect("valid initial parameters");
@@ -459,8 +459,12 @@ impl Lab {
     }
 }
 
-impl eframe::App for Lab {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+impl egui_software_backend::App for Lab {
+    fn update(
+        &mut self,
+        ctx: &egui::Context,
+        _backend: &mut egui_software_backend::SoftwareBackend,
+    ) {
         self.render(ctx);
     }
 }
@@ -488,17 +492,13 @@ fn metric(ui: &mut egui::Ui, label: &str, value: String, detail: &str, color: Co
     ui.label(RichText::new(detail).color(MUTED).size(10.0));
 }
 
-fn main() -> eframe::Result {
-    eframe::run_native(
-        "LIF",
-        eframe::NativeOptions {
-            viewport: egui::ViewportBuilder::default()
-                .with_inner_size([1360.0, 820.0])
-                .with_min_inner_size([1100.0, 720.0]),
-            ..Default::default()
-        },
-        Box::new(|cc| Ok(Box::new(Lab::new(cc)))),
-    )
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let options = egui_software_backend::SoftwareBackendAppConfiguration::new()
+        .title(Some("LIF".into()))
+        .inner_size(Some(egui::vec2(1360.0, 820.0)))
+        .min_inner_size(Some(egui::vec2(1100.0, 720.0)));
+    egui_software_backend::run_app_with_software_backend(options, Lab::new)?;
+    Ok(())
 }
 
 fn load_chinese_font(ctx: &egui::Context) {
@@ -562,9 +562,12 @@ mod tests {
 
     #[test]
     fn renders_all_signals_at_supported_sizes() {
+        use egui_software_backend::{BufferMutRef, ColorFieldOrder, EguiSoftwareRender};
+
+        let context = egui::Context::default();
+        let mut lab = Lab::new(context.clone());
+        let mut renderer = EguiSoftwareRender::new(ColorFieldOrder::Bgra);
         for size in [[1100.0, 720.0], [1360.0, 820.0]] {
-            let context = egui::Context::default();
-            let mut lab = lab();
             let output = context.run(
                 egui::RawInput {
                     screen_rect: Some(egui::Rect::from_min_size(
@@ -576,6 +579,22 @@ mod tests {
                 |ctx| lab.render(ctx),
             );
             assert!(!output.shapes.is_empty());
+            let primitives = context.tessellate(output.shapes, output.pixels_per_point);
+            let mut pixels = vec![[0; 4]; size[0] as usize * size[1] as usize];
+            renderer.render(
+                &mut BufferMutRef::new(&mut pixels, size[0] as usize, size[1] as usize),
+                &primitives,
+                &output.textures_delta,
+                output.pixels_per_point,
+            );
+            for color in [CYAN, AMBER, GREEN] {
+                assert!(
+                    pixels
+                        .iter()
+                        .any(|pixel| { pixel[..3] == [color.b(), color.g(), color.r()] }),
+                    "software frame must contain each signal color"
+                );
+            }
             assert_eq!(lab.parameters, Parameters::default());
         }
     }
