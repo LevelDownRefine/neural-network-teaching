@@ -71,7 +71,10 @@ class ModelDelta(ModelBase):
         return {"W": self.W.detach().clone()}
 
     def load_state_dict(self, state):
+        if set(state) != {"W"}:
+            raise ValueError("state must contain exactly W")
         weights = state["W"]
+        assert weights.dtype == torch.float32, "weights must be float32"
         if weights.shape != self.W.shape or not weights.isfinite().all():
             raise ValueError("weights must be finite and match model dimensions")
         result = super().load_state_dict(state)

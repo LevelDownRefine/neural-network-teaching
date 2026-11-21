@@ -133,3 +133,24 @@ def test_hebbian_attention_readout():
         (scores / 2).softmax(-1) @ v,
         scaled_dot_product_attention(q[None], k[None], v[None])[0],
     )
+
+
+def test_failed_load_preserves_weights_and_cached_results():
+    model = ModelDelta(d=2, m=1)
+    model.feed_data({"q": torch.ones(2)})
+    model.test()
+    cached = model.current_results()
+    before = model.W.clone()
+    with pytest.raises((ValueError, RuntimeError)):
+        model.load_state_dict({"W": torch.ones_like(model.W), "extra": torch.tensor(0)})
+    torch.testing.assert_close(model.W, before)
+    assert model.current_results() is cached
+    with pytest.raises(AssertionError, match="float32"):
+        model.load_state_dict({"W": torch.ones_like(model.W, dtype=torch.float64)})
+    torch.testing.assert_close(model.W, before)
+    assert model.current_results() is cached
+    model.load_state_dict({"W": torch.ones_like(model.W)})
+    with pytest.raises(RuntimeError):
+        model.current_results()
+    with pytest.raises(RuntimeError):
+        model.test()
