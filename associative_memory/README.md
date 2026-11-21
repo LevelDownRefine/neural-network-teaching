@@ -51,6 +51,7 @@ uv run --locked --extra cpu pytest associative_memory/tests -q
 
 ```python
 from associative_memory.train import DeltaTrainer, train_epoch
+
 trainer = DeltaTrainer(model, lr=0.5)
 train_epoch(trainer, keys, values, order)
 ```
@@ -63,6 +64,7 @@ NumPy 回归测试使用提交 `960150d` 的原始实现转为 FP32 作对照（
 
 ```python
 from associative_memory.train import DeltaTrainer, HebbianTrainer, train_epoch
+
 trainer = DeltaTrainer(model, lr=0.5)  # 或 HebbianTrainer(model, lr=0.5)
 trainer.step({"q": k}, v)
 # 完整一轮：train_epoch(trainer, keys, values, order)
