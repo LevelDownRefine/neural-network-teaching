@@ -6,7 +6,6 @@ from copy import deepcopy
 from pathlib import Path
 
 import matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
@@ -162,6 +161,8 @@ def save_csv(path, rows):
 
 
 def plot_results(summary, output, trials):
+    import matplotlib.pyplot as plt
+
     with plt.rc_context(
         {
             "font.size": 11,
@@ -268,7 +269,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--trials", type=int, default=200)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--output", type=Path, default=Path("results"))
+    parser.add_argument(
+        "--output", type=Path, default=Path(__file__).with_name("results")
+    )
     args = parser.parse_args()
     if args.trials < 1 or args.seed < 0:
         parser.error("--trials must be positive and --seed must be nonnegative")
