@@ -115,3 +115,42 @@ def train_epoch(trainer, keys, values, order):
         raise ValueError("keys and values must have the same length")
     for i in order:
         trainer.step({"q": keys[i]}, values[i])
+
+
+def main():
+    """Run: python -m associative_memory.train (Hebbian vs explicit attention)."""
+    from .models import ModelAttention, ModelMemory
+
+    rng = torch.Generator().manual_seed(123)
+    d, m, eta = 4, 3, 0.5
+    keys = torch.randn(6, d, generator=rng) / d**0.5
+    values = torch.randn(6, m, generator=rng)
+    queries = torch.randn(5, d, generator=rng)
+    # Repeat entries to check that additional writes also remain equivalent.
+    order = [0, 1, 2, 3, 4, 5, 1, 1, 0, 5]
+    memory = ModelMemory(d, m)
+    hebbian = HebbianTrainer(memory, lr=eta)
+    attention = ModelAttention(eta=eta)
+    writer = AttentionTrainer(attention, d=d, m=m)
+    print("seed=123, FP32, eta=0.5; Hebbian SGD vs attention K/V append")
+    print("step  key   Hebbian loss  Attention loss   max|dW|   max|dz|")
+    for step, i in enumerate(order, start=1):
+        loss_h = hebbian.step({"q": keys[i]}, values[i])
+        loss_a = writer.step({"q": keys[i]}, values[i])
+        with torch.no_grad():
+            weights = writer.memory_weight()
+            z_h = memory(q=queries)
+            z_a = attention(q=queries, k=writer.keys, v=writer.values)
+            torch.testing.assert_close(weights, memory.W, atol=2e-6, rtol=2e-5)
+            torch.testing.assert_close(z_a, z_h, atol=2e-5, rtol=2e-5)
+            torch.testing.assert_close(loss_a, loss_h, atol=2e-5, rtol=2e-5)
+            dw = (weights - memory.W).abs().max().item()
+            dz = (z_a - z_h).abs().max().item()
+        print(
+            f"{step:4d}  {i:3d}  {loss_h.item():13.6f}  {loss_a.item():14.6f}  {dw:9.2e}  {dz:9.2e}"
+        )
+    print("All 10 steps match within FP32 tolerances (W, pre-write loss, readout).")
+
+
+if __name__ == "__main__":
+    main()
