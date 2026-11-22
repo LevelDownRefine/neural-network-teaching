@@ -75,3 +75,16 @@ trainer.step({"q": k}, v)
 每个规则的 loss 定义在对应 Trainer 子类中，不再提供独立 losses.py。公共 Trainer 仍支持传入其他 criterion 和 optimizer。
 
 `ZeroTrainer(model)` 接受同样的 `step(inputs, target)` 和 `train_epoch` 调用，校验输入但不反向传播、不创建 optimizer、不修改 W，step 返回 None（没有训练目标）。它不会主动清零已有权重；零基线应传入新建的零初始化模型。
+
+## 与 Hebbian 一一对照的点积 Attention
+
+`ModelAttention(eta=0.5)` 使用 `forward(**kwargs)` 接收 q/k/v，K/V 按行存储：
+
+```python
+from associative_memory.models import ModelAttention
+
+attention = ModelAttention(eta=0.5)
+z = attention(q=queries, k=keys, v=values)
+```
+
+计算为 `eta * ((q @ k.T) @ v)`，没有 softmax、sqrt(d) 缩放或投影参数。它等价于零初始化的 Hebbian 记忆在相同学习率下，写入相同配对（含重复次数）后的读出。K/V 由调用方保存；重复训练时也必须在 K/V 中重复相应条目。FP32 运算顺序不同会产生微小误差，不保证逐位相同或近零值的符号一致。这不是标准 Softmax Attention，也不等价于 Delta。
