@@ -1,7 +1,5 @@
 # MNIST 脉冲编码实验
 
-[Homework 2 任务索引与整理约定](../lif/homework_results_index.md)。
-
 Task 1 见 [encoding_and_membrane_dynamics.ipynb](encoding_and_membrane_dynamics.ipynb)。
 
 Task 2 使用相同 TSSL 结构、50,000／10,000 训练／验证划分、seed 42、增强与 EMA，分别训练 Rate、Latency 和 Phase，时间步数为 10、20、50、100。每组先训练 20 轮，以验证集准确率选模后评估完整测试集。训练目标在第 0 步为 0，其余步为 1；损失按时间步数归一化。

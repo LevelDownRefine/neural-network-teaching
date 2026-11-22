@@ -194,17 +194,3 @@ def simulate_experiment(parameters, backend="snntorch"):
         # snnTorch 会全局保留神经元；桌面仿真结束后只移除本次临时对象。
         if neuron is not None:
             snn.SpikingNeuron.instances.remove(neuron.neuron)
-
-
-def summarize_spikes(data, duration_ms):
-    """Summarize detected spikes using the full observation duration, in ms."""
-    if not np.isfinite(duration_ms) or duration_ms <= 0:
-        raise ValueError("duration_ms must be positive and finite")
-    times = np.asarray(data["time_ms"])[np.asarray(data["spikes"], dtype=bool)]
-    count = len(times)
-    return {
-        "spike_count": count,
-        "average_rate_Hz": count / (duration_ms / 1000),
-        "first_spike_ms": float(times[0]) if count else None,
-        "mean_ISI_ms": float(np.diff(times).mean()) if count > 1 else None,
-    }

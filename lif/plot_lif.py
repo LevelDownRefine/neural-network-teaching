@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def plot_signal(ax, signal, data, V_rest, V_th, time_limit_ms=200):
+def plot_signal(ax, signal, data, V_rest, V_th):
     time_ms = data["time_ms"]
     if signal == "current":
         ax.plot(data["input_time_ms"], data["current"])
@@ -23,20 +23,20 @@ def plot_signal(ax, signal, data, V_rest, V_th, time_limit_ms=200):
         ax.set_ylabel("Firing rate (Hz)")
     else:
         raise ValueError(f"Unknown signal: {signal}")
-    ax.set_xlim(0, time_limit_ms if time_limit_ms is not None else time_ms[-1])
+    ax.set_xlim(0, 200)
 
 
-def plot_individual(data, signal, V_rest, V_th, time_limit_ms=200):
+def plot_individual(data, signal, V_rest, V_th):
     fig, ax = plt.subplots(figsize=(10, 2))
-    plot_signal(ax, signal, data, V_rest, V_th, time_limit_ms)
+    plot_signal(ax, signal, data, V_rest, V_th)
     ax.set_xlabel("Time (ms)")
     plt.show()
 
 
-def plot_summary(name, data, V_rest, V_th, time_limit_ms=200):
+def plot_summary(name, data, V_rest, V_th):
     fig, axes = plt.subplots(4, 1, figsize=(10, 8), sharex=True)
     for ax, signal in zip(axes, ("current", "voltage", "spikes", "rate"), strict=True):
-        plot_signal(ax, signal, data, V_rest, V_th, time_limit_ms)
+        plot_signal(ax, signal, data, V_rest, V_th)
     axes[0].set_title(name)
     axes[-1].set_xlabel("Time (ms)")
     fig.tight_layout()
