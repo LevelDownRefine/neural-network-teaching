@@ -1,0 +1,29 @@
+{
+  "seeds": [
+    1000,
+    1079
+  ],
+  "loads": [
+    8,
+    16,
+    32,
+    64,
+    128
+  ],
+  "dimensions": [
+    32,
+    64,
+    128
+  ],
+  "eta_default": 0.5,
+  "eta_scale_check": [
+    0.25,
+    0.5,
+    1.0
+  ],
+  "correlated_flip_probability": 0.25,
+  "correlated_expected_pairwise_overlap": 0.25,
+  "numpy": "2.4.6",
+  "torch": "2.15.0+cpu",
+  "matplotlib": "3.11.2"
+}
