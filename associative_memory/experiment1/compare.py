@@ -2,9 +2,21 @@
 
 import csv
 import math
+from collections import defaultdict
 from dataclasses import dataclass
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import numpy as np
+import torch
+
+from associative_memory.recall_benchmark import (
+    LEARNING_RATE,
+    baseline_summary,
+    write_csv,
+)
+
+from . import OUTPUT_DIR
 
 
 def numpy_readouts(key_signs, targets, learning_rate):
@@ -241,3 +253,31 @@ def plot_differences(rows, path):
     )
     fig.savefig(path, dpi=180, facecolor="white")
     plt.close(fig)
+
+
+def main():
+    torch.set_num_threads(1)
+    audits = defaultdict(ReadoutAudit)
+
+    def audit_readouts(d, p, signs, targets, readouts):
+        references = numpy_readouts(signs, targets, LEARNING_RATE)
+        for method, (scores, _) in readouts.items():
+            reference, norm = references[method]
+            audits[d, p, method].add(scores, reference, targets, norm)
+
+    rows = baseline_summary(observe=audit_readouts)
+    reference = Path(__file__).with_name("reference") / "numpy_fp64.csv"
+    comparisons = compare_summaries(rows, reference, audits)
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    with TemporaryDirectory(dir=OUTPUT_DIR) as temp:
+        staging = Path(temp)
+        write_csv(comparisons, staging / "experiment1_comparison.csv")
+        plot_differences(comparisons, staging / "experiment1_comparison.png")
+        for path in sorted(staging.iterdir()):
+            destination = OUTPUT_DIR / path.name
+            path.replace(destination)
+            print(destination)
+
+
+if __name__ == "__main__":
+    main()

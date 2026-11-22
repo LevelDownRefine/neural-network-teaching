@@ -37,25 +37,24 @@ Hebbian 目标为 `-(pred * target).sum()`，得到 `W += lr * outer(v, k)`；�
 
 `data.py` 的 `generate_pairs(rng, p, d, m)` 返回 K、V 和随机写入顺序。实验一沿用 NumPy 基线的随机流，使各方法和两种实现可以逐比特对照。
 
-### 实验一
+### 实验一作业
 
-在仓库根目录运行主实验。每个设置使用 200 批相同的随机记忆，各条配对只写入一次，写完再用完整线索检索。结果写入 `associative_memory/output/experiment1/`。
+从仓库根目录运行以下命令。Hebbian、Delta 和零矩阵使用同一批随机键值，逐对写入一次，写完后用完整线索检索。键维数为 32、64、128，记忆数为 8、16、32、64、128，内容维数为 32，学习率为 0.5。每个组合独立重复 200 次。
 
 ```shell
 uv run --locked --extra cpu python -m associative_memory.experiment1.run
 ```
 
-`experiment1_curves.png` 包含比特正确率随记忆负载的曲线，以及连续读出 MSE 和权重范数随记忆数量的曲线。`experiment1_summary.csv` 保存每组的均值和标准差。`experiment1_comparison.csv` 和同名 PNG 对照 PyTorch FP32 与归档的 NumPy FP64 结果。
+结果位于 `associative_memory/output/experiment1/`。主图 `experiment1_curves.png` 按键维数分行，各线代表一种写入方法。左列画比特正确率随记忆负载 P/d 的变化，中列和右列分别画 MSE 和权重 Frobenius 范数随记忆数 P 的变化。表格 `experiment1_summary.csv` 保存每个条件的均值、样本标准差和权重字节数。
 
-下列模块分别复算独立 NumPy 基线、比较递减步长 Delta 与 RLS、比较官方 PDN 写入递推与两种对照。拓展模块会先生成缺少的对照数据。
+### 可选的 NumPy 复核
+
+第一条命令用独立的 NumPy FP64 实现重算作业，结果保存在 `numpy_baseline/`。第二条命令逐比特对照 PyTorch FP32 与 NumPy FP64，核验归档汇总表，另存 `experiment1_comparison.csv` 和 `experiment1_comparison.png`。两条命令均可独立运行。
 
 ```shell
 uv run --locked --extra cpu python -m associative_memory.experiment1.numpy_baseline
-uv run --locked --extra cpu python -m associative_memory.experiment1.optimized_writes
-uv run --locked --extra cpu python -m associative_memory.experiment1.preconditioned
+uv run --locked --extra cpu python -m associative_memory.experiment1.compare
 ```
-
-PDN 使用单头和固定门值，直接读写作业给定的键值。写入步长为 0.5，无遗忘，预条件器对每条键等权累积。RLS 使用岭正则 0.01。`preconditioned_delta/` 保存正确率、配对差值以及持续写入状态的字节数。CPU 张量峰值由 PyTorch profiler 在单批、每次输入一条配对的情况下测量。程序会核验官方参考函数的 Git blob，随附许可证位于 `experiment1/reference/pdn/`。[作者参考实现](https://github.com/ntumm120/preconditioned-deltanet/blob/7bd753279af87b39114149a104c5bde9bf67145f/3rdparty/flash-linear-attention/fla/ops/precond_gated_delta_rule/naive.py)
 
 ### 测试
 
