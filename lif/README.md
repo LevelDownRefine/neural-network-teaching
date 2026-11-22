@@ -1,8 +1,10 @@
 # LIF 神经元仿真
 
+[Homework 2 任务索引与整理约定](homework_results_index.md)。
+
 [查看作业题目](homework-2.pdf)。
 
-打开 [task1_lif.ipynb](task1_lif.ipynb)，使用项目 Python 3.12 环境依次运行。Notebook 从 Euler 更新开始，展示膜电位、阈值、重置和不应期；后续实验不包含在本文件中。
+打开 [neuron_dynamics.ipynb](neuron_dynamics.ipynb)，使用项目 Python 3.12 环境依次运行。Notebook 从 Euler 更新开始，展示膜电位、阈值、重置和不应期；后续实验不包含在本文件中。
 
 ```bash
 uv sync --locked --extra cpu

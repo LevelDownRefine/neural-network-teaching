@@ -51,3 +51,18 @@ def test_repeated_experiments_release_temporary_neurons():
     with pytest.raises(ValueError):
         simulate_experiment(SimulationParameters(mode="invalid", duration=1))
     assert len(snn.SpikingNeuron.instances) == before
+
+
+def test_spike_summary_observation_window():
+    from lif.model import summarize_spikes
+
+    data = {"time_ms": np.array([1.0, 2.0, 3.0]), "spikes": np.array([0, 1, 1])}
+    assert summarize_spikes(data, 4) == {
+        "spike_count": 2,
+        "average_rate_Hz": 500.0,
+        "first_spike_ms": 2.0,
+        "mean_ISI_ms": 1.0,
+    }
+    data["spikes"][:] = 0
+    assert summarize_spikes(data, 4)["first_spike_ms"] is None
+    assert summarize_spikes(data, 4)["mean_ISI_ms"] is None
