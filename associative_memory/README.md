@@ -88,3 +88,5 @@ z = attention(q=queries, k=keys, v=values)
 ```
 
 计算为 `eta * ((q @ k.T) @ v)`，没有 softmax、sqrt(d) 缩放或投影参数。它等价于零初始化的 Hebbian 记忆在相同学习率下，写入相同配对（含重复次数）后的读出。K/V 由调用方保存；重复训练时也必须在 K/V 中重复相应条目。FP32 运算顺序不同会产生微小误差，不保证逐位相同或近零值的符号一致。这不是标准 Softmax Attention，也不等价于 Delta。
+
+训练等价测试为两边配置相同初始化的 Q/K/V 线性投影、MSE 和优化器。一边显式计算点积 Attention，另一边在每次 forward 中从零逐条累加可微的 Hebbian 外积，再读出。分别使用 SGD、Adam 训练 30 步，逐步比较输出、投影梯度和更新后的参数。该实验验证可微快速记忆与 Attention 的端到端训练等价；不代表现有 HebbianTrainer 的独立写入操作能够反向传播穿过历史写入。现有 Trainer 使用 optimizer.step 更新 W，没有保留这条历史计算图。

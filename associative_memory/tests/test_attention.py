@@ -56,3 +56,73 @@ def test_attention_input_contracts():
         attention(q=q, k=k, v=v[:2])
     with pytest.raises(ValueError):
         attention(q=q, k=k, v=torch.full_like(v, float("nan")))
+
+
+@pytest.mark.parametrize("optimizer_class", [torch.optim.SGD, torch.optim.Adam])
+def test_projected_attention_and_differentiable_hebbian_train_identically(
+    optimizer_class,
+):
+    from copy import deepcopy
+
+    torch.manual_seed(123)
+    projections = torch.nn.ModuleDict(
+        {
+            "q": torch.nn.Linear(3, 4, bias=False),
+            "k": torch.nn.Linear(3, 4, bias=False),
+            "v": torch.nn.Linear(3, 2, bias=False),
+        }
+    )
+    hebbian_projections = deepcopy(projections)
+    optimizers = [
+        optimizer_class(net.parameters(), lr=0.01)
+        for net in (projections, hebbian_projections)
+    ]
+    queries, context = torch.randn(5, 3), torch.randn(7, 3)
+    targets = torch.randn(5, 2)
+    attention = ModelAttention(eta=0.5)
+    initial = [p.detach().clone() for p in projections.parameters()]
+    first_loss = None
+    max_output_error = max_gradient_error = max_parameter_error = 0.0
+    for _ in range(30):
+        outputs, losses = [], []
+        for net, optimizer, compressed in zip(
+            (projections, hebbian_projections), optimizers, (False, True)
+        ):
+            optimizer.zero_grad()
+            q, k, v = net["q"](queries), net["k"](context), net["v"](context)
+            if compressed:
+                # Rebuild fast memory each forward. No detach or optimizer on M:
+                # all outer-product writes remain differentiable w.r.t. K and V.
+                memory = k.new_zeros(v.shape[-1], k.shape[-1])
+                for key, value in zip(k, v):
+                    memory = memory + attention.eta * torch.outer(value, key)
+                output = q @ memory.T
+            else:
+                output = attention(q=q, k=k, v=v)
+            loss = (output - targets).square().mean()
+            loss.backward()
+            outputs.append(output.detach())
+            losses.append(loss.detach())
+        if first_loss is None:
+            first_loss = losses[0].item()
+        torch.testing.assert_close(outputs[0], outputs[1], atol=2e-5, rtol=2e-5)
+        max_output_error = max(
+            max_output_error, (outputs[0] - outputs[1]).abs().max().item()
+        )
+        for a, b in zip(projections.parameters(), hebbian_projections.parameters()):
+            torch.testing.assert_close(a.grad, b.grad, atol=2e-5, rtol=2e-5)
+            max_gradient_error = max(
+                max_gradient_error, (a.grad - b.grad).abs().max().item()
+            )
+        for optimizer in optimizers:
+            optimizer.step()
+        for a, b in zip(projections.parameters(), hebbian_projections.parameters()):
+            torch.testing.assert_close(a, b, atol=2e-5, rtol=2e-5)
+            max_parameter_error = max(max_parameter_error, (a - b).abs().max().item())
+    assert losses[0].item() < first_loss
+    assert any(not torch.equal(a, b) for a, b in zip(initial, projections.parameters()))
+    print(
+        f"{optimizer_class.__name__}: loss {first_loss:.6g} -> {losses[0].item():.6g}; "
+        f"max errors output={max_output_error:.3g}, gradient={max_gradient_error:.3g}, "
+        f"parameter={max_parameter_error:.3g}"
+    )
