@@ -23,10 +23,17 @@ OCCLUSIONS = (0.0, 0.25, 0.5, 0.75)
 METHODS = {"Hebbian": HebbianTrainer, "Delta": DeltaTrainer}
 COLORS = {"Hebbian": "#2563a6", "Delta": "#c65a24"}
 CONFIG = {
-    "d": 64, "m": 32, "pairs": 32, "eta": 0.5, "epochs": 1,
-    "masks_per_memory": 10, "main_seed": 42,
-    "repeat_seeds": list(range(20)), "occlusions": OCCLUSIONS,
-    "example_memory_indices": [0, 1, 2], "example_mask_index": 0,
+    "d": 64,
+    "m": 32,
+    "pairs": 32,
+    "eta": 0.5,
+    "epochs": 1,
+    "masks_per_memory": 10,
+    "main_seed": 42,
+    "repeat_seeds": list(range(20)),
+    "occlusions": OCCLUSIONS,
+    "example_memory_indices": [0, 1, 2],
+    "example_mask_index": 0,
 }
 
 
@@ -42,9 +49,10 @@ def experiment(seed):
                 masks[level, memory, trial, rng.choice(64, keep, replace=False)] = True
     queries = masks * keys[None, :, None, :]
     queries /= np.linalg.norm(queries, axis=-1, keepdims=True)
-    np.testing.assert_array_equal(masks.sum(axis=-1),
-                                  np.broadcast_to(np.array([64, 48, 32, 16])[:, None, None],
-                                                  (4, 32, 10)))
+    np.testing.assert_array_equal(
+        masks.sum(axis=-1),
+        np.broadcast_to(np.array([64, 48, 32, 16])[:, None, None], (4, 32, 10)),
+    )
     np.testing.assert_allclose(np.linalg.norm(queries, axis=-1), 1)
     weights, outputs, rows = [], [], []
     tensor_keys = torch.from_numpy(keys.astype(np.float32))
@@ -68,15 +76,31 @@ def experiment(seed):
             accuracy = np.mean(predictions[level] == values[:, None, :])
             mse = np.mean((output[level] - values[:, None, :]) ** 2)
             exact = np.mean(np.all(predictions[level] == values[:, None, :], axis=-1))
-            rows.append({"seed": seed, "method": name, "occlusion": p,
-                         "bit_accuracy": float(accuracy), "mse": float(mse),
-                         "exact_recall_rate": float(exact),
-                         "output_power": float(np.mean(output[level] ** 2)),
-                         "target_alignment": float(np.mean(output[level] * values[:, None, :]))})
+            rows.append(
+                {
+                    "seed": seed,
+                    "method": name,
+                    "occlusion": p,
+                    "bit_accuracy": float(accuracy),
+                    "mse": float(mse),
+                    "exact_recall_rate": float(exact),
+                    "output_power": float(np.mean(output[level] ** 2)),
+                    "target_alignment": float(
+                        np.mean(output[level] * values[:, None, :])
+                    ),
+                }
+            )
         weights.append(frozen)
         outputs.append(output)
-    return rows, dict(keys=keys, values=values, order=order, masks=masks,
-                      queries=queries, weights=np.array(weights), z=np.array(outputs))
+    return rows, dict(
+        keys=keys,
+        values=values,
+        order=order,
+        masks=masks,
+        queries=queries,
+        weights=np.array(weights),
+        z=np.array(outputs),
+    )
 
 
 def write_csv(path, rows):
@@ -91,14 +115,22 @@ def plot_curves(rows, repeats):
     for name in METHODS:
         selected = [r for r in rows if r["method"] == name]
         for ax, metric in zip(axes, ("bit_accuracy", "mse")):
-            ax.plot(OCCLUSIONS, [r[metric] for r in selected], "o-",
-                    color=COLORS[name], label=name)
+            ax.plot(
+                OCCLUSIONS,
+                [r[metric] for r in selected],
+                "o-",
+                color=COLORS[name],
+                label=name,
+            )
     axes[0].set(ylabel="Bit accuracy", ylim=(0.45, 1))
     axes[0].axhline(0.5, color="gray", ls=":", label="Chance (expected)")
     axes[1].set(ylabel="MSE of continuous output")
     for ax in axes:
-        ax.set(xlabel="Occluded coordinates (%)", xticks=OCCLUSIONS,
-               xticklabels=["0", "25", "50", "75"])
+        ax.set(
+            xlabel="Occluded coordinates (%)",
+            xticks=OCCLUSIONS,
+            xticklabels=["0", "25", "50", "75"],
+        )
         ax.grid(alpha=0.2)
         ax.legend()
     fig.savefig(OUTPUT / "main_curves.png", dpi=180)
@@ -107,16 +139,31 @@ def plot_curves(rows, repeats):
     fig, axes = plt.subplots(1, 2, figsize=(10, 3.8), layout="constrained")
     for name in METHODS:
         for ax, metric in zip(axes, ("bit_accuracy", "mse")):
-            groups = [[r[metric] for r in repeats if r["method"] == name
-                       and r["occlusion"] == p] for p in OCCLUSIONS]
-            ax.errorbar(OCCLUSIONS, np.mean(groups, axis=1),
-                        yerr=np.std(groups, axis=1, ddof=1), fmt="o-", capsize=4,
-                        label=name, color=COLORS[name])
+            groups = [
+                [
+                    r[metric]
+                    for r in repeats
+                    if r["method"] == name and r["occlusion"] == p
+                ]
+                for p in OCCLUSIONS
+            ]
+            ax.errorbar(
+                OCCLUSIONS,
+                np.mean(groups, axis=1),
+                yerr=np.std(groups, axis=1, ddof=1),
+                fmt="o-",
+                capsize=4,
+                label=name,
+                color=COLORS[name],
+            )
     axes[0].set(ylabel="Bit accuracy", ylim=(0.45, 1))
     axes[1].set(ylabel="MSE of continuous output")
     for ax in axes:
-        ax.set(xlabel="Occluded coordinates (%)", xticks=OCCLUSIONS,
-               xticklabels=["0", "25", "50", "75"])
+        ax.set(
+            xlabel="Occluded coordinates (%)",
+            xticks=OCCLUSIONS,
+            xticklabels=["0", "25", "50", "75"],
+        )
         ax.grid(alpha=0.2)
         ax.legend()
     fig.savefig(OUTPUT / "repeat_curves.png", dpi=180)
@@ -131,7 +178,9 @@ def plot_examples(raw):
             cue = np.sign(raw["queries"][level, memory, 0]).reshape(8, 8)
             images = [cue, raw["values"][memory].reshape(4, 8)]
             for output in raw["z"]:
-                images.append(np.where(output[level, memory, 0] >= 0, 1, -1).reshape(4, 8))
+                images.append(
+                    np.where(output[level, memory, 0] >= 0, 1, -1).reshape(4, 8)
+                )
             for column, (ax, pixels) in enumerate(zip(axes[level], images)):
                 ax.imshow(pixels, cmap="gray", vmin=-1, vmax=1, interpolation="nearest")
                 ax.set_xticks([])
@@ -142,10 +191,19 @@ def plot_examples(raw):
                     correct = np.mean(pixels.ravel() == raw["values"][memory])
                     ax.set_xlabel(f"{correct * 100:.3f}% bits correct")
             if level == 0:
-                for ax, title in zip(axes[0], ("Partial cue (8 x 8)", "True value (4 x 8)",
-                                              "Hebbian recall", "Delta recall")):
+                for ax, title in zip(
+                    axes[0],
+                    (
+                        "Partial cue (8 x 8)",
+                        "True value (4 x 8)",
+                        "Hebbian recall",
+                        "Delta recall",
+                    ),
+                ):
                     ax.set_title(title)
-        fig.suptitle(f"Memory {memory}; mask 0; seed 42 | black=-1, gray=masked, white=+1")
+        fig.suptitle(
+            f"Memory {memory}; mask 0; seed 42 | black=-1, gray=masked, white=+1"
+        )
         fig.savefig(OUTPUT / f"example_{memory}.png", dpi=160)
         plt.close(fig)
 
@@ -160,7 +218,9 @@ def main():
     summary = []
     for name in METHODS:
         for p in OCCLUSIONS:
-            selected = [r for r in repeats if r["method"] == name and r["occlusion"] == p]
+            selected = [
+                r for r in repeats if r["method"] == name and r["occlusion"] == p
+            ]
             row = {"method": name, "occlusion": p}
             for metric in ("bit_accuracy", "mse", "exact_recall_rate"):
                 samples = [r[metric] for r in selected]
@@ -171,11 +231,15 @@ def main():
     write_csv(OUTPUT / "repeat_metrics.csv", repeats)
     write_csv(OUTPUT / "repeat_summary.csv", summary)
     np.savez_compressed(OUTPUT / "main_raw.npz", **raw)
-    config = {**CONFIG, "numpy_version": np.__version__, "torch_version": torch.__version__,
-              "matplotlib_version": matplotlib.__version__,
-              "raw_method_axis": list(METHODS),
-              "raw_query_axes": ["occlusion", "memory", "mask", "coordinate"],
-              "raw_z_axes": ["method", "occlusion", "memory", "mask", "content_bit"]}
+    config = {
+        **CONFIG,
+        "numpy_version": np.__version__,
+        "torch_version": torch.__version__,
+        "matplotlib_version": matplotlib.__version__,
+        "raw_method_axis": list(METHODS),
+        "raw_query_axes": ["occlusion", "memory", "mask", "coordinate"],
+        "raw_z_axes": ["method", "occlusion", "memory", "mask", "content_bit"],
+    }
     (OUTPUT / "config.json").write_text(json.dumps(config, indent=2), encoding="utf-8")
     plot_curves(rows, repeats)
     plot_examples(raw)
