@@ -4,7 +4,7 @@ import pytest
 import torch
 
 from associative_memory.models import ModelAttention, ModelMemory
-from associative_memory.train import HebbianTrainer
+from associative_memory.train import AttentionTrainer, HebbianTrainer, train_epoch
 
 
 @pytest.mark.parametrize("eta", [0.25, 0.5, 1.0])
@@ -126,3 +126,45 @@ def test_projected_attention_and_differentiable_hebbian_train_identically(
         f"max errors output={max_output_error:.3g}, gradient={max_gradient_error:.3g}, "
         f"parameter={max_parameter_error:.3g}"
     )
+
+
+@pytest.mark.parametrize("eta", [0.25, 0.5, 1.0])
+def test_attention_trainer_matches_hebbian_weights_losses_and_outputs(eta):
+    rng = torch.Generator().manual_seed(123)
+    k = torch.randn(12, 4, generator=rng)
+    v = torch.randn(12, 3, generator=rng)
+    q = torch.randn(5, 4, generator=rng)
+    memory = ModelMemory(4, 3)
+    hebbian = HebbianTrainer(memory, lr=eta)
+    attention = ModelAttention(eta=eta)
+    writer = AttentionTrainer(attention, d=4, m=3)
+    torch.testing.assert_close(writer.memory_weight(), memory.W)
+    order = torch.cat([torch.randperm(12, generator=rng), torch.tensor([3, 3, 0])])
+    for i in order:
+        a = hebbian.step({"q": k[i]}, v[i])
+        b = writer.step({"q": k[i]}, v[i])
+        torch.testing.assert_close(a, b, atol=2e-5, rtol=2e-5)
+        torch.testing.assert_close(
+            writer.memory_weight(), memory.W, atol=2e-6, rtol=2e-5
+        )
+        torch.testing.assert_close(
+            attention(q=q, k=writer.keys, v=writer.values),
+            memory(q=q),
+            atol=2e-5,
+            rtol=2e-5,
+        )
+    train_epoch(writer, k, v, order)
+    train_epoch(hebbian, k, v, order)
+    torch.testing.assert_close(writer.memory_weight(), memory.W, atol=2e-6, rtol=2e-5)
+    restored = ModelMemory(4, 3)
+    restored.load_state_dict({"W": writer.memory_weight()})
+    torch.testing.assert_close(restored(q=q), memory(q=q), atol=2e-5, rtol=2e-5)
+    assert writer.optimizer is None
+    assert not writer.keys.requires_grad and not writer.values.requires_grad
+    before = writer.memory_weight().clone()
+    with pytest.raises(ValueError):
+        writer.step({"q": k[0]}, torch.tensor([float("nan"), 0.0, 0.0]))
+    torch.testing.assert_close(writer.memory_weight(), before)
+    k.zero_()
+    v.zero_()
+    torch.testing.assert_close(writer.memory_weight(), before)

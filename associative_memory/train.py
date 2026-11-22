@@ -70,6 +70,41 @@ class ZeroTrainer(Trainer):
         self._validate_loss_inputs(self.model(**inputs), target)
 
 
+class AttentionTrainer(Trainer):
+    """Write explicit K/V with the same result as zero-initialized Hebbian SGD.
+
+    This is a memory writer, not projection training. The supplied attention
+    model's eta is the Hebbian learning rate and must stay fixed.
+    """
+
+    def __init__(self, model, d=64, m=32, device="cpu"):
+        super().__init__(model, criterion=HebbianTrainer.loss, optimizer=None)
+        if not isinstance(d, int) or not isinstance(m, int) or min(d, m) <= 0:
+            raise ValueError("d and m must be positive integers")
+        self.keys = torch.empty(0, d, dtype=torch.float32, device=device)
+        self.values = torch.empty(0, m, dtype=torch.float32, device=device)
+
+    @torch.no_grad()
+    def step(self, inputs, target):
+        """Append one pair and return the same pre-write loss as HebbianTrainer."""
+        key = inputs["q"]
+        # Validate and compute the loss before changing either stored tensor.
+        output = self.model(q=key, k=self.keys, v=self.values)
+        loss = self.criterion(output, target)
+        if key.ndim != 1:
+            raise ValueError("writing requires one key vector")
+        if target.device != self.values.device:
+            raise ValueError("target and memory must be on the same device")
+        keys = torch.cat((self.keys, key.unsqueeze(0)))
+        values = torch.cat((self.values, target.unsqueeze(0)))
+        self.keys, self.values = keys, values
+        return loss
+
+    def memory_weight(self):
+        """Materialize the equivalent Hebbian W for comparison or transfer."""
+        return self.model.eta * (self.values.T @ self.keys)
+
+
 def train_epoch(trainer, keys, values, order):
     """Train once per supplied index; repeated indices support replay.
 

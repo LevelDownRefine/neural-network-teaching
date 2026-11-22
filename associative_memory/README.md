@@ -90,3 +90,17 @@ z = attention(q=queries, k=keys, v=values)
 计算为 `eta * ((q @ k.T) @ v)`，没有 softmax、sqrt(d) 缩放或投影参数。它等价于零初始化的 Hebbian 记忆在相同学习率下，写入相同配对（含重复次数）后的读出。K/V 由调用方保存；重复训练时也必须在 K/V 中重复相应条目。FP32 运算顺序不同会产生微小误差，不保证逐位相同或近零值的符号一致。这不是标准 Softmax Attention，也不等价于 Delta。
 
 训练等价测试为两边配置相同初始化的 Q/K/V 线性投影、MSE 和优化器。一边显式计算点积 Attention，另一边在每次 forward 中从零逐条累加可微的 Hebbian 外积，再读出。分别使用 SGD、Adam 训练 30 步，逐步比较输出、投影梯度和更新后的参数。该实验验证可微快速记忆与 Attention 的端到端训练等价；不代表现有 HebbianTrainer 的独立写入操作能够反向传播穿过历史写入。现有 Trainer 使用 optimizer.step 更新 W，没有保留这条历史计算图。
+
+### AttentionTrainer 与 Hebbian 权重对照
+
+```python
+from associative_memory.train import AttentionTrainer
+
+attention = ModelAttention(eta=0.5)
+trainer = AttentionTrainer(attention, d=64, m=32)
+trainer.step({"q": k}, v)
+z = attention(q=q, k=trainer.keys, v=trainer.values)
+W = trainer.memory_weight()  # eta * V.T @ K，可加载到 ModelMemory
+```
+
+AttentionTrainer 保存每次写入的 K/V（重复写入保留重复项），可直接使用 train_epoch。固定 eta 与 HebbianTrainer 的 lr 相同、从空/零记忆开始时，每步还原的 W、写入前的负内积 loss 和查询输出均与 Hebbian SGD 对应。它不创建 optimizer，也不训练 Q/K/V 投影；这是用显式存储实现同一种记忆写入。K/V 存在 Trainer 中，ModelAttention 本身仍无参数；memory_weight() 用于对照或转存，并不是 Attention 的持久参数。历史写入在此接口中不保留计算图。
