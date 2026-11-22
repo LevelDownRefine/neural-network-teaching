@@ -75,3 +75,7 @@ trainer.step({"q": k}, v)
 每个规则的 loss 定义在对应 Trainer 子类中，不再提供独立 losses.py。公共 Trainer 仍支持传入其他 criterion 和 optimizer。
 
 `ZeroTrainer(model)` 接受同样的 `step(inputs, target)` 和 `train_epoch` 调用，校验输入但不反向传播、不创建 optimizer、不修改 W，step 返回 None（没有训练目标）。它不会主动清零已有权重；零基线应传入新建的零初始化模型。
+
+## 论文方法对照
+
+独立运行官方 Preconditioned DeltaNet 写入递推与 Delta、RLS 的正确率和写入内存比较，见[论文对照说明](paper_comparison/README.md)。

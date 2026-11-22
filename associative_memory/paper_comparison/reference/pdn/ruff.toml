@@ -1,0 +1,3 @@
+# Keep the author's reference function byte-for-byte compatible with its pinned Git blob.
+extend = "../../../../pyproject.toml"
+extend-exclude = ["naive.py"]
