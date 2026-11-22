@@ -1,4 +1,3 @@
-from .model_base import ModelBase
-from .model_memory import ModelDelta, ModelHebbian, ModelZero
+from .model_memory import ModelMemory
 
-__all__ = ["ModelBase", "ModelDelta", "ModelHebbian", "ModelZero"]
+__all__ = ["ModelMemory"]
