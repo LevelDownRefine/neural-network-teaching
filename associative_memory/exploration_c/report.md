@@ -12,7 +12,7 @@
 python -m associative_memory.exploration_c.run
 ```
 
-`results/individual_runs.csv` 保存每个种子的指标，`results/summary.csv` 保存跨种子均值和样本标准差，`results/config.json` 保存全部参数和依赖版本。图像均独立保存在 `results/`。
+`../output/exploration_c/individual_runs.csv` 保存每个种子的指标，`../output/exploration_c/summary.csv` 保存跨种子均值和样本标准差，`../output/exploration_c/config.json` 保存全部参数和依赖版本。图像均独立保存在 `../output/exploration_c/`。
 
 ## 推导
 
@@ -52,7 +52,7 @@ Var_corr(ε_j) = η² (P−1) [ρ² + (1−ρ²)/d]
 | 64 | 0.2461 | 0.2471 | 0.4926 | 15.41% |
 | 128 | 0.4961 | 0.4914 | 0.7431 | 23.93% |
 
-![独立线索下的负载与维数](results/independent_load_dimension.png)
+![独立线索下的负载与维数](../output/exploration_c/independent_load_dimension.png)
 
 `d=32、64、128` 三组曲线均随负载上升；同一负载下，增大 `d` 降低串扰。理论虚线和实测曲线贴近。`d=64` 时，从 `P=8` 增至 `P=128`，实测二阶矩从 0.0277 增至 0.4914，比特错误率从 0.17% 升至 23.93%。
 
@@ -64,7 +64,7 @@ Var_corr(ε_j) = η² (P−1) [ρ² + (1−ρ²)/d]
 | 0.50 | 0.1211 | 0.1214 | 7.68% |
 | 1.00 | 0.4844 | 0.4857 | 7.68% |
 
-![学习率与串扰方差](results/learning_rate.png)
+![学习率与串扰方差](../output/exploration_c/learning_rate.png)
 
 学习率从 0.25 加到 1.0，实测串扰二阶矩精确按四倍、十六倍缩放；比特错误率保持不变。这是因为零初始、单遍 Hebbian 的整个读出都乘以正数 `η`，改变幅值不会改变符号。连续读出误差与比特错误率由此不能混为一谈。
 
@@ -80,7 +80,7 @@ Var_corr(ε_j) = η² (P−1) [ρ² + (1−ρ²)/d]
 | 64 | 0.2471 | 1.2016 | 1.2151 | 15.41% | 31.81% |
 | 128 | 0.4914 | 2.4505 | 2.4495 | 23.93% | 36.78% |
 
-![相关线索与独立线索对照](results/correlated_cues.png)
+![相关线索与独立线索对照](../output/exploration_c/correlated_cues.png)
 
 在 `P=32` 时，相关组的串扰二阶矩是独立组的 4.78 倍，比特错误率由 7.68% 升至 25.31%。沿用独立公式会预测 0.1211，明显低于相关组的实测值；相关线索公式预测 0.5979，与实测值同量级。线索相关时，其他记忆的键与目标键持续重叠，造成额外串扰。
 

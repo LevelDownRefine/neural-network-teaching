@@ -270,7 +270,9 @@ def main():
     parser.add_argument("--trials", type=int, default=200)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument(
-        "--output", type=Path, default=Path(__file__).with_name("results")
+        "--output",
+        type=Path,
+        default=Path(__file__).resolve().parents[1] / "output" / "exploration_replay",
     )
     args = parser.parse_args()
     if args.trials < 1 or args.seed < 0:

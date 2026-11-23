@@ -19,7 +19,7 @@ from associative_memory.models import ModelMemory
 from associative_memory.train import HebbianTrainer, train_epoch
 
 HERE = Path(__file__).resolve().parent
-RESULTS = HERE / "results"
+OUTPUT = HERE.parent / "output" / "exploration_c"
 SEEDS = tuple(range(1000, 1080))
 LOADS = (8, 16, 32, 64, 128)
 DIMENSIONS = (32, 64, 128)
@@ -170,7 +170,7 @@ def plot(summary):
     for ax in axes:
         ax.grid(alpha=0.2)
         ax.legend(fontsize=8)
-    fig.savefig(RESULTS / "independent_load_dimension.png", dpi=180)
+    fig.savefig(OUTPUT / "independent_load_dimension.png", dpi=180)
     plt.close(fig)
 
     fig, axes = plt.subplots(1, 2, figsize=(11, 4), layout="constrained")
@@ -203,7 +203,7 @@ def plot(summary):
     for ax in axes:
         ax.grid(alpha=0.2)
         ax.legend(fontsize=8)
-    fig.savefig(RESULTS / "correlated_cues.png", dpi=180)
+    fig.savefig(OUTPUT / "correlated_cues.png", dpi=180)
     plt.close(fig)
 
     sample = [
@@ -232,12 +232,12 @@ def plot(summary):
     axes[1].set(xlabel="Learning rate eta", ylabel="Bit error rate", ylim=(0, 0.12))
     for ax in axes:
         ax.grid(alpha=0.2)
-    fig.savefig(RESULTS / "learning_rate.png", dpi=180)
+    fig.savefig(OUTPUT / "learning_rate.png", dpi=180)
     plt.close(fig)
 
 
 def main():
-    RESULTS.mkdir(exist_ok=True)
+    OUTPUT.mkdir(parents=True, exist_ok=True)
     check_repository_implementation()
     rows = []
     for seed in SEEDS:
@@ -249,9 +249,9 @@ def main():
         for eta in (0.25, 1.0):
             rows.append(evaluate(seed, 32, 64, eta, "independent"))
     summary = grouped(rows)
-    save_csv(RESULTS / "individual_runs.csv", rows)
-    save_csv(RESULTS / "summary.csv", summary)
-    (RESULTS / "config.json").write_text(
+    save_csv(OUTPUT / "individual_runs.csv", rows)
+    save_csv(OUTPUT / "summary.csv", summary)
+    (OUTPUT / "config.json").write_text(
         json.dumps(
             {
                 "seeds": [SEEDS[0], SEEDS[-1]],

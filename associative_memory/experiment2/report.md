@@ -39,7 +39,7 @@
 | Delta | 50% | 86.82% | 0.5386 | 3.44% |
 | Delta | 75% | 77.01% | 0.6983 | 0.00% |
 
-![主实验曲线](results/main_curves.png)
+![主实验曲线](../output/experiment2/main_curves.png)
 
 ## 20 组独立重复实验
 
@@ -60,7 +60,7 @@
 | Delta | 50% | 86.11% ± 0.66% | 0.5505 ± 0.0111 |
 | Delta | 75% | 76.54% ± 0.70% | 0.6969 ± 0.0099 |
 
-![重复实验曲线，误差条为跨种子标准差](results/repeat_curves.png)
+![重复实验曲线，误差条为跨种子标准差](../output/experiment2/repeat_curves.png)
 
 ## 可视化与样例选择
 
@@ -87,15 +87,15 @@
 
 ### 记忆 0
 
-![记忆 0 的四种遮挡查询](results/example_0.png)
+![记忆 0 的四种遮挡查询](../output/experiment2/example_0.png)
 
 ### 记忆 1
 
-![记忆 1 的四种遮挡查询](results/example_1.png)
+![记忆 1 的四种遮挡查询](../output/experiment2/example_1.png)
 
 ### 记忆 2
 
-![记忆 2 的四种遮挡查询](results/example_2.png)
+![记忆 2 的四种遮挡查询](../output/experiment2/example_2.png)
 
 这三条记忆的固定掩码展示了不同的局部结果。例如记忆 0 在 25% 遮挡时，Hebbian 正确 28/32 位，在 50% 遮挡时正确 30/32 位。因为各遮挡比例独立抽取保留位置，单个样例可以非单调；是否整体退化应以主实验表格的 320 次检索为准。
 
@@ -121,7 +121,7 @@
 python -m associative_memory.experiment2.run
 ```
 
-主实验明细为 results/main_metrics.csv，20 组重复明细为 repeat_metrics.csv，汇总为 repeat_summary.csv。main_raw.npz 保存主实验的配对、写入顺序、掩码、归一化查询、两种权重和全部连续输出，数组轴定义见 config.json。
+主实验明细为 ../output/experiment2/main_metrics.csv，20 组重复明细为 repeat_metrics.csv，汇总为 repeat_summary.csv。main_raw.npz 保存主实验的配对、写入顺序、掩码、归一化查询、两种权重和全部连续输出，数组轴定义见 config.json。
 
 本实验复用 associative_memory/data.py、models/model_memory.py 和 train.py。实现依据项目根目录 Homework3_Plasticity_Based_Associative_Memory.pdf 第 1—2 页。
 

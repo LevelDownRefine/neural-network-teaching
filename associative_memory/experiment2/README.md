@@ -1,6 +1,6 @@
 # 实验二：线索不完整还能想起来吗
 
-阅读 `report.md` 查看实验设置、结果、三组样例和解释。图片单独保存在 `results/*.png`。
+阅读 `report.md` 查看实验设置、结果、三组样例和解释。图片单独保存在 `../output/experiment2/*.png`。
 
 ## 复现
 
@@ -19,14 +19,14 @@ python -m associative_memory.experiment2.run
 | 文件 | 内容 |
 |---|---|
 | `run.py` | 实验、统计、绘图与运行时检查 |
-| `results/config.json` | 参数、种子、版本、原始数组的轴定义 |
-| `results/main_metrics.csv` | 主实验两种方法、四种遮挡比例的指标 |
-| `results/repeat_metrics.csv` | 20 组重复实验逐组指标 |
-| `results/repeat_summary.csv` | 重复实验均值和样本标准差 |
-| `results/main_raw.npz` | 配对、顺序、掩码、查询、权重及全部连续输出 |
-| `results/main_curves.png` | 主实验正确率、MSE 曲线 |
-| `results/repeat_curves.png` | 重复实验曲线，误差条为跨种子标准差 |
-| `results/example_0.png` 至 `example_2.png` | 提前固定的三条记忆，各展示四种遮挡比例 |
+| `../output/experiment2/config.json` | 参数、种子、版本、原始数组的轴定义 |
+| `../output/experiment2/main_metrics.csv` | 主实验两种方法、四种遮挡比例的指标 |
+| `../output/experiment2/repeat_metrics.csv` | 20 组重复实验逐组指标 |
+| `../output/experiment2/repeat_summary.csv` | 重复实验均值和样本标准差 |
+| `../output/experiment2/main_raw.npz` | 配对、顺序、掩码、查询、权重及全部连续输出 |
+| `../output/experiment2/main_curves.png` | 主实验正确率、MSE 曲线 |
+| `../output/experiment2/repeat_curves.png` | 重复实验曲线，误差条为跨种子标准差 |
+| `../output/experiment2/example_0.png` 至 `example_2.png` | 提前固定的三条记忆，各展示四种遮挡比例 |
 
 `main_raw.npz` 中 `weights` 和 `z` 的方法轴依次为 Hebbian、Delta。
 遮挡轴依次为 0、0.25、0.5、0.75，具体轴定义记录在 `config.json`。

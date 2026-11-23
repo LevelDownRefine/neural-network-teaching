@@ -18,7 +18,7 @@ from associative_memory.data import generate_pairs
 from associative_memory.models import ModelMemory
 from associative_memory.train import DeltaTrainer, HebbianTrainer, train_epoch
 
-OUTPUT = Path(__file__).resolve().parent / "results"
+OUTPUT = Path(__file__).resolve().parents[1] / "output" / "experiment2"
 OCCLUSIONS = (0.0, 0.25, 0.5, 0.75)
 METHODS = {"Hebbian": HebbianTrainer, "Delta": DeltaTrainer}
 COLORS = {"Hebbian": "#2563a6", "Delta": "#c65a24"}
