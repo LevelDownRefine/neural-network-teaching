@@ -42,9 +42,12 @@ Hebbian 目标为 `-(pred * target).sum()`，得到 `W += lr * outer(v, k)`；�
 | 任务 | 说明 | 运行命令 |
 | --- | --- | --- |
 | 实验一 | [单遍写入与完整线索检索](experiment1/README.md) | `python -m associative_memory.experiment1.run` |
-| 探索任务 | [顺序学习与旧记忆回放](exploration_replay/README.md) | `python -m associative_memory.exploration_replay.run` |
+| 实验二 | [部分线索检索](experiment2/README.md) | `python -m associative_memory.experiment2.run` |
+| 实验三 | [顺序学习与旧记忆回放](experiment3/README.md) | `python -m associative_memory.experiment3.run` |
 
-从仓库根目录运行，使用 `uv run --locked --extra cpu` 前缀。任务目录保存 run.py、README.md 和必要的绘图模块；生成的数据、图片统一放在 output/<任务目录名>/。README 给出设置、运行方法及结果链接。实验二和探索方向 C 由独立 PR 提交，沿用相同约定。
+| 探索方向 C | [Hebbian 串扰分析](exploration_c/README.md) | `python -m associative_memory.exploration_c.run` |
+
+从仓库根目录运行，使用 `uv run --locked --extra cpu` 前缀。任务目录保存 run.py、README.md 和必要的绘图模块；生成的数据、图片统一放在 output/<任务目录名>/。README 给出设置、运行方法及结果链接。实验二和方向 C 也沿用相同约定。
 
 ### 测试
 

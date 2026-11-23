@@ -1,4 +1,4 @@
-"""HW3 exploratory task: compare sequential Delta learning with old-memory replay."""
+"""HW3 Experiment 3: compare sequential Delta learning with old-memory replay."""
 
 import argparse
 import csv
@@ -272,7 +272,7 @@ def main():
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path(__file__).resolve().parents[1] / "output" / "exploration_replay",
+        default=Path(__file__).resolve().parents[1] / "output" / "experiment3",
     )
     args = parser.parse_args()
     if args.trials < 1 or args.seed < 0:

@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from associative_memory.exploration_replay.run import run_trial
+from associative_memory.experiment3.run import run_trial
 
 
 def test_replay_controls_and_accounting():
