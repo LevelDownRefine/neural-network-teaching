@@ -35,7 +35,7 @@ Hebbian 目标为 `-(pred * target).sum()`，得到 `W += lr * outer(v, k)`；�
 
 ## 数据与测试
 
-`data.py` 的 `generate_pairs(rng, p, d, m)` 返回 K、V 和随机写入顺序。实验一沿用 NumPy 基线的随机流，使各方法和两种实现可以逐比特对照。
+`data.py` 的 `generate_pairs(rng, p, d, m)` 返回 K、V 和随机写入顺序。实验一固定随机流，各方法共享同一批配对。
 
 ### 实验一作业
 
@@ -46,15 +46,6 @@ uv run --locked --extra cpu python -m associative_memory.experiment1.run
 ```
 
 结果位于 `associative_memory/output/experiment1/`。主图 `experiment1_curves.png` 按键维数分行，各线代表一种写入方法。左列画比特正确率随记忆负载 P/d 的变化，中列和右列分别画 MSE 和权重 Frobenius 范数随记忆数 P 的变化。表格 `experiment1_summary.csv` 保存每个条件的均值、样本标准差和权重字节数。
-
-### 可选的 NumPy 复核
-
-第一条命令用独立的 NumPy FP64 实现重算作业，结果保存在 `numpy_baseline/`。第二条命令逐比特对照 PyTorch FP32 与 NumPy FP64，核验归档汇总表，另存 `experiment1_comparison.csv` 和 `experiment1_comparison.png`。两条命令均可独立运行。
-
-```shell
-uv run --locked --extra cpu python -m associative_memory.experiment1.numpy_baseline
-uv run --locked --extra cpu python -m associative_memory.experiment1.compare
-```
 
 ### 测试
 

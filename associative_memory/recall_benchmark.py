@@ -52,7 +52,7 @@ def measure(scores, targets, weight_norm):
     )
 
 
-def run_trial(d, p, repeat, *, observe=None):
+def run_trial(d, p, repeat):
     """每条配对写一次，最后用完整线索读出。可选回调接收同批数据和各方法的连续读出。"""
     signs, targets = sample_pairs(d, p, repeat)
     keys, values = pair_tensors(signs, targets)
@@ -70,21 +70,17 @@ def run_trial(d, p, repeat, *, observe=None):
             scores = model(q=keys).double().numpy()
             norm = torch.linalg.vector_norm(model.W.double()).item()
         readouts[method] = scores, norm
-    if observe is not None:
-        observe(d, p, signs, targets, readouts)
     return np.asarray(
         [measure(scores, targets, norm) for scores, norm in readouts.values()]
     )
 
 
-def baseline_summary(*, observe=None):
+def baseline_summary():
     rows = []
     for d in KEY_DIMS:
         weight = ModelMemory(d=d, m=VALUE_DIM).W
         for p in PAIR_COUNTS:
-            runs = np.stack(
-                [run_trial(d, p, i, observe=observe) for i in range(REPEATS)]
-            )
+            runs = np.stack([run_trial(d, p, i) for i in range(REPEATS)])
             means = runs.mean(axis=0)
             deviations = runs.std(axis=0, ddof=1)
             for i, method in enumerate(METHODS):
