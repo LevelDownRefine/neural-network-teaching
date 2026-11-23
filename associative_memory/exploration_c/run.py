@@ -1,6 +1,6 @@
 """Homework 3, option C: derive and measure Hebbian crosstalk.
 
-Run from the repository root: python -m associative_memory.option_3.run
+Run from the repository root: python -m associative_memory.exploration_c.run
 """
 
 import csv

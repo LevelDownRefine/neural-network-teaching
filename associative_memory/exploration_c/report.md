@@ -9,8 +9,7 @@
 运行命令：
 
 ```powershell
-python -m associative_memory.option_3.run
-python -m associative_memory.option_3.build_report
+python -m associative_memory.exploration_c.run
 ```
 
 `results/individual_runs.csv` 保存每个种子的指标，`results/summary.csv` 保存跨种子均值和样本标准差，`results/config.json` 保存全部参数和依赖版本。图像均独立保存在 `results/`。

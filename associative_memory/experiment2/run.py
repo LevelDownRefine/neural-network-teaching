@@ -1,6 +1,6 @@
 """Reproduce Homework 3 experiment 2 from the repository root.
 
-Run: python -m associative_memory.ex2.run
+Run: python -m associative_memory.experiment2.run
 """
 
 import csv

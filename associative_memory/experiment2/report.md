@@ -118,8 +118,7 @@
 在仓库根目录激活含 NumPy、Matplotlib、PyTorch 的环境后运行：
 
 ```powershell
-python -m associative_memory.ex2.run
-python -m associative_memory.ex2.build_report
+python -m associative_memory.experiment2.run
 ```
 
 主实验明细为 results/main_metrics.csv，20 组重复明细为 repeat_metrics.csv，汇总为 repeat_summary.csv。main_raw.npz 保存主实验的配对、写入顺序、掩码、归一化查询、两种权重和全部连续输出，数组轴定义见 config.json。

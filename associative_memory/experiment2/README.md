@@ -7,8 +7,7 @@
 在仓库根目录使用包含 NumPy、Matplotlib、PyTorch 的 Python 环境执行：
 
 ```powershell
-python -m associative_memory.ex2.run
-python -m associative_memory.ex2.build_report
+python -m associative_memory.experiment2.run
 ```
 
 第一条命令运行种子 42 的主实验和种子 0–19 的重复实验，输出数据和图像。
@@ -20,7 +19,6 @@ python -m associative_memory.ex2.build_report
 | 文件 | 内容 |
 |---|---|
 | `run.py` | 实验、统计、绘图与运行时检查 |
-| `build_report.py` | 生成中文 Markdown 报告 |
 | `results/config.json` | 参数、种子、版本、原始数组的轴定义 |
 | `results/main_metrics.csv` | 主实验两种方法、四种遮挡比例的指标 |
 | `results/repeat_metrics.csv` | 20 组重复实验逐组指标 |
@@ -29,7 +27,6 @@ python -m associative_memory.ex2.build_report
 | `results/main_curves.png` | 主实验正确率、MSE 曲线 |
 | `results/repeat_curves.png` | 重复实验曲线，误差条为跨种子标准差 |
 | `results/example_0.png` 至 `example_2.png` | 提前固定的三条记忆，各展示四种遮挡比例 |
-| `ex2_submission.zip` | Markdown 报告、实验代码、结果及运行所需的公共模型与训练源码 |
 
 `main_raw.npz` 中 `weights` 和 `z` 的方法轴依次为 Hebbian、Delta。
 遮挡轴依次为 0、0.25、0.5、0.75，具体轴定义记录在 `config.json`。
