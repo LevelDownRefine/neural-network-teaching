@@ -81,7 +81,6 @@ trainer.step({"q": k}, v)
 | 目录 | 内容 | 运行入口 |
 | --- | --- | --- |
 | experiment2 | 实验二：部分线索检索 | `python -m associative_memory.experiment2.run` |
-| exploration_replay | 探索性研究：顺序学习与旧记忆回放 | `python -m associative_memory.exploration_replay.run` |
 | exploration_c | 探索方向 C：Hebbian 串扰推导与验证 | `python -m associative_memory.exploration_c.run` |
 
 
