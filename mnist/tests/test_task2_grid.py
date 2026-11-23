@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from spike_encoding.run_task2 import matching_result, write_report
+from spike_encoding.run_encoding_comparison import matching_result, write_report
 
 
 def test_existing_result_must_match_the_complete_experiment(tmp_path):
