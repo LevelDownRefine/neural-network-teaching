@@ -37,17 +37,14 @@ Hebbian 目标为 `-(pred * target).sum()`，得到 `W += lr * outer(v, k)`；�
 
 `data.py` 的 `generate_pairs(rng, p, d, m)` 返回 K、V 和随机写入顺序。实验一固定随机流，各方法共享同一批配对。
 
-### 实验一作业
+## 作业入口与结果
 
-从仓库根目录运行以下命令。Hebbian、Delta 和零矩阵使用同一批随机键值，逐对写入一次，写完后用完整线索检索。键维数为 32、64、128，记忆数为 8、16、32、64、128，内容维数为 32，学习率为 0.5。每个组合独立重复 200 次。
+| 任务 | 说明 | 运行命令 |
+| --- | --- | --- |
+| 实验一 | [单遍写入与完整线索检索](experiment1/README.md) | `python -m associative_memory.experiment1.run` |
+| 探索任务 | [顺序学习与旧记忆回放](exploration_replay/README.md) | `python -m associative_memory.exploration_replay.run` |
 
-```shell
-uv run --locked --extra cpu python -m associative_memory.experiment1.run
-```
-
-结果位于 `associative_memory/output/experiment1/`。主图 `experiment1_curves.png` 按键维数分行，各线代表一种写入方法。左列画比特正确率随记忆负载 P/d 的变化，中列和右列分别画 MSE 和权重 Frobenius 范数随记忆数 P 的变化。表格 `experiment1_summary.csv` 保存每个条件的均值、样本标准差和权重字节数。
-
-![实验一：比特正确率、MSE 和权重范数](output/experiment1/experiment1_curves.png)
+从仓库根目录运行，使用 `uv run --locked --extra cpu` 前缀。任务目录保存 run.py、README.md 和必要的绘图模块；生成的数据、图片统一放在 output/<任务目录名>/。README 给出设置、运行方法及结果链接。实验二和探索方向 C 由独立 PR 提交，沿用相同约定。
 
 ### 测试
 
