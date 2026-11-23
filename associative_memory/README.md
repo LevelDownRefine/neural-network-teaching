@@ -86,3 +86,15 @@ trainer.step({"q": k}, v)
 每个规则的 loss 定义在对应 Trainer 子类中，不再提供独立 losses.py。公共 Trainer 仍支持传入其他 criterion 和 optimizer。
 
 `ZeroTrainer(model)` 接受同样的 `step(inputs, target)` 和 `train_epoch` 调用，校验输入但不反向传播、不创建 optimizer、不修改 W，step 返回 None（没有训练目标）。它不会主动清零已有权重；零基线应传入新建的零初始化模型。
+
+## 作业目录
+
+| 目录 | 内容 | 运行入口 |
+| --- | --- | --- |
+| experiment2 | 实验二：部分线索检索 | `python -m associative_memory.experiment2.run` |
+| exploration_c | 探索方向 C：Hebbian 串扰推导与验证 | `python -m associative_memory.exploration_c.run` |
+
+
+报告直接维护 Markdown，避免以 Python 字符串重复保存整份报告；原始 CSV 保留用于核对统计结果。
+
+输出目录以脚本位置定位，不依赖启动时的工作目录。分析文档放在任务源码目录，图像及数据链接指向 ../output/<任务名>/。

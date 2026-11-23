@@ -6,8 +6,8 @@ SHD 是公开的脉冲语音数据集；原始语音经人工耳蜗转换为 700
 
 ```powershell
 conda activate hw
-python spike_encoding/section2_task3_shd/download.py
-python spike_encoding/section2_task3_shd/experiment.py
+python spike_encoding/shd_baseline/download.py
+python spike_encoding/shd_baseline/experiment.py
 ```
 
 下载器将两个官方压缩包下载到 `shd_data/`，核对 MD5 后解压为 `shd_train.h5` 和 `shd_test.h5`。下载失败时可重新运行；也可以手动从官方数据源下载两个文件并解压到该目录。
