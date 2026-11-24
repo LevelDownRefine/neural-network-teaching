@@ -35,7 +35,21 @@ Hebbian 目标为 `-(pred * target).sum()`，得到 `W += lr * outer(v, k)`；�
 
 ## 数据与测试
 
-`data.py` 的 `generate_pairs(rng, p, d, m)` 返回 K、V 和随机写入顺序。随机数生成器由实验持有，各方法共享数据与顺序；正式实验脚本另行提交。
+`data.py` 的 `generate_pairs(rng, p, d, m)` 返回 K、V 和随机写入顺序。实验一固定随机流，各方法共享同一批配对。
+
+## 作业入口与结果
+
+| 任务 | 说明 | 运行命令 |
+| --- | --- | --- |
+| 实验一 | [单遍写入与完整线索检索](experiment1/README.md) | `python -m associative_memory.experiment1.run` |
+| 实验二 | [部分线索检索](experiment2/README.md) | `python -m associative_memory.experiment2.run` |
+| 实验三 | [顺序学习与旧记忆回放](experiment3/README.md) | `python -m associative_memory.experiment3.run` |
+
+| 探索方向 C | [Hebbian 串扰分析](exploration_c/README.md) | `python -m associative_memory.exploration_c.run` |
+
+从仓库根目录运行，使用 `uv run --locked --extra cpu` 前缀。任务目录保存 run.py、README.md 和必要的绘图模块；生成的数据、图片统一放在 output/<任务目录名>/。README 给出设置、运行方法及结果链接。实验二和方向 C 也沿用相同约定。
+
+### 测试
 
 ```powershell
 uv run --locked --extra cpu pytest associative_memory/tests -q
@@ -76,6 +90,14 @@ trainer.step({"q": k}, v)
 
 `ZeroTrainer(model)` 接受同样的 `step(inputs, target)` 和 `train_epoch` 调用，校验输入但不反向传播、不创建 optimizer、不修改 W，step 返回 None（没有训练目标）。它不会主动清零已有权重；零基线应传入新建的零初始化模型。
 
-## 论文方法对照
+## 作业目录
 
-独立运行官方 Preconditioned DeltaNet 写入递推与 Delta、RLS 的正确率和写入内存比较，见[论文对照说明](paper_comparison/README.md)。
+| 目录 | 内容 | 运行入口 |
+| --- | --- | --- |
+| experiment2 | 实验二：部分线索检索 | `python -m associative_memory.experiment2.run` |
+| exploration_c | 探索方向 C：Hebbian 串扰推导与验证 | `python -m associative_memory.exploration_c.run` |
+
+
+报告直接维护 Markdown，避免以 Python 字符串重复保存整份报告；原始 CSV 保留用于核对统计结果。
+
+输出目录以脚本位置定位，不依赖启动时的工作目录。分析文档放在任务源码目录，图像及数据链接指向 ../output/<任务名>/。

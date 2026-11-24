@@ -1,0 +1,6 @@
+﻿condition,capacity,a_updates,b_updates,total_updates,weight_scalars,weight_bytes,buffer_scalars,buffer_bytes,total_bytes
+sequential,0,128,128,256,2048,8192,0,0,8192
+matched,0,128,256,384,2048,8192,0,0,8192
+replay_4,4,128,256,384,2048,8192,384,1536,9728
+replay_16,16,128,256,384,2048,8192,1536,6144,14336
+replay_32,32,128,256,384,2048,8192,3072,12288,20480
