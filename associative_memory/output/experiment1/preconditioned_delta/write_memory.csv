@@ -1,0 +1,7 @@
+﻿d,m,method,dtype,weight_bytes,extra_state_bytes,persistent_write_bytes,single_stream_cpu_tensor_peak_bytes,profile_pairs,profile_batch,profile_repeats
+32,32,Delta,float32,4096,0,4096,8328,32,1,2
+32,32,PDN,float32,4096,128,4224,21908,32,1,2
+64,32,Delta,float32,8192,0,8192,16520,32,1,2
+64,32,PDN,float32,8192,256,8448,43540,32,1,2
+128,32,Delta,float32,16384,0,16384,32904,32,1,2
+128,32,PDN,float32,16384,512,16896,86804,32,1,2

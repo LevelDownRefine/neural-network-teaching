@@ -1,4 +1,4 @@
-"""用作者的 PyTorch 参考递推比较固定门值 PDN、Delta 和 RLS。"""
+"""用作者的 PyTorch 参考递推比较固定门值 PDN 与作业原版 Delta。"""
 
 import hashlib
 import importlib.util
@@ -26,14 +26,13 @@ from associative_memory.experiment1.run import (
 )
 
 from . import OUTPUT_DIR
-from .optimized_writes import RIDGE, evaluate, fit_delta, fit_rls
-from .preconditioned_curves import plot_accuracy, plot_memory
+from .optimized_writes import evaluate, fit_delta
+from .preconditioned_curves import METHODS, plot_accuracy, plot_memory
 
 OUTPUT = OUTPUT_DIR / "preconditioned_delta"
 COMMIT = "7bd753279af87b39114149a104c5bde9bf67145f"
 REF_PATH = "3rdparty/flash-linear-attention/fla/ops/precond_gated_delta_rule/naive.py"
 REF_BLOB = "4a2273f25a89b509332e8755391e78cc594a16b0"
-METHODS = ("Delta", "PDN", "RLS")
 X, EPS, CENTER = 1.5, 1e-6, -0.2
 CHUNK = 20
 PROFILE_PAIRS = 32
@@ -148,22 +147,20 @@ def compare(d, p, rule, audit):
                 v.numpy(),
                 torch.linalg.vector_norm(memory[j, 0].double()).item(),
             )
-            results[i, 2], _ = evaluate(fit_rls(k, v), k, v.numpy())
     rows = []
     for j, method in enumerate(METHODS):
         row = dict(d=d, m=VALUE_DIM, P=p, load=p / d, method=method, repeats=REPEATS)
         for k, metric in enumerate(METRICS):
             row[f"{metric}_mean"] = results[:, j, k].mean()
             row[f"{metric}_sd"] = results[:, j, k].std(ddof=1)
-        for base in ("Delta", "RLS"):
-            gains = paired_interval(
-                results[:, j, 0] - results[:, METHODS.index(base), 0]
-            )
-            for suffix, value in zip(("pp", "ci95_low_pp", "ci95_high_pp"), gains):
-                row[f"gain_vs_{base.lower()}_{suffix}"] = value
+        gains = paired_interval(
+            results[:, j, 0] - results[:, METHODS.index("Delta"), 0]
+        )
+        for suffix, value in zip(("pp", "ci95_low_pp", "ci95_high_pp"), gains):
+            row[f"gain_vs_delta_{suffix}"] = value
         rows.append(row)
     print(
-        f"d={d:3} P={p:3}   Delta / PDN / RLS   "
+        f"d={d:3} P={p:3}   Delta / PDN   "
         + "   ".join(f"{100 * row['bit_accuracy_mean']:.3f}%" for row in rows),
         flush=True,
     )
@@ -173,8 +170,8 @@ def compare(d, p, rule, audit):
 def stream_write(method, rule, keys, values):
     if method == "Delta":
         return fit_delta(keys, values, repeat(LEARNING_RATE, len(keys)))
-    if method == "RLS":
-        return fit_rls(keys, values)
+    if method != "PDN":
+        raise ValueError(f"Unknown write method: {method}")
     state = (None, None)
     for key, value in zip(keys, values):
         state = official_write(rule, key.view(1, 1, -1), value.view(1, 1, -1), state)
@@ -195,7 +192,7 @@ def tensor_peak(method, rule, keys, values):
     for event in events:
         current += event.nbytes()
         peak = max(peak, current)
-    # 对记账结果做独立检查。RLS 的辅助矩阵在 fit_rls 写完返回时已释放。
+    # 用写完后仍存活的张量核对分配事件的净增量。
     if method == "PDN":
         live = list(result)
     else:
@@ -214,7 +211,8 @@ def measure_memory(rule):
     for d in KEY_DIMS:
         keys, values = make_inputs(d, PROFILE_PAIRS, 0)
         itemsize = keys.element_size()
-        for method, extra in zip(METHODS, (0, d, d * d)):
+        for method in METHODS:
+            extra = d if method == "PDN" else 0
             stream_write(
                 method, rule, keys[:2], values[:2]
             )  # 先预热，排除首次导入和优化器初始化
@@ -286,14 +284,13 @@ def main():
             trained_gates=False,
         ),
         delta_eta=LEARNING_RATE,
-        rls_ridge=RIDGE,
-        rls_forgetting_factor=1,
+        methods=METHODS,
         baseline_check="covered by small deterministic regression tests",
         paired_interval="mean across 200 independent batches +/- 1.96 paired SE, per comparison",
         peak_measurement="single-stream CPU tensor allocation peak over 32 one-pair writes, two identical runs",
         validation=audit,
     )
-    OUTPUT.mkdir(exist_ok=True)
+    OUTPUT.mkdir(parents=True, exist_ok=True)
     with TemporaryDirectory(dir=OUTPUT) as tmp:
         staging = Path(tmp)
         write_csv(rows, staging / "accuracy_by_condition.csv")

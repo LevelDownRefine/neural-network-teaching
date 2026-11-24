@@ -1,10 +1,10 @@
 import numpy as np
 
-from .run import KEY_DIMS
+from .run import KEY_DIMS, REPEATS
 
-METHODS = ("Delta", "PDN", "RLS")
-COLORS = {"Delta": "#5A6470", "PDN": "#00766E", "RLS": "#B64A21"}
-LABELS = {"Delta": "原版 Delta", "PDN": "官方 PDN（固定门值）", "RLS": "RLS"}
+METHODS = ("Delta", "PDN")
+COLORS = {"Delta": "#B84828", "PDN": "#00766E"}
+LABELS = {"Delta": "作业原版 Delta", "PDN": "论文方法 PDN（固定门值）"}
 
 
 def setup_plots():
@@ -51,20 +51,22 @@ def plot_accuracy(rows, output):
     fig.text(
         0.082,
         0.934,
-        "相同记忆负载下，三种写入规则能找回多少比特",
+        "原版 Delta 与固定门值 PDN 的单遍检索正确率",
         fontsize=19,
         weight="bold",
     )
+    pdn_gains = [r["gain_vs_delta_pp"] for r in rows if r["method"] == "PDN"]
     fig.text(
         0.082,
         0.88,
-        "每组 200 批相同的随机记忆，每条写入一遍，再用完整线索检索。",
+        f"完整线索检索，每组 {REPEATS} 次配对重复。"
+        f"{len(pdn_gains)} 组条件等权平均，PDN 较原版 Delta {np.mean(pdn_gains):+.2f} 个百分点。",
         color="#405560",
     )
     for col, d in enumerate(KEY_DIMS):
         top, diff = axes[:, col]
         top.set_title(f"键维度  d = {d}", loc="left", weight="bold", fontsize=11)
-        for method, mark, line in zip(METHODS, ("o", "D", "s"), ("--", "-", "-.")):
+        for method, mark, line in zip(METHODS, ("o", "D"), ("--", "-"), strict=True):
             subset = [r for r in rows if r["d"] == d and r["method"] == method]
             load = [r["load"] for r in subset]
             top.plot(
@@ -111,7 +113,7 @@ def plot_accuracy(rows, output):
         labels,
         loc="upper left",
         bbox_to_anchor=(0.074, 0.841),
-        ncol=3,
+        ncol=len(METHODS),
         frameon=False,
         columnspacing=2.3,
     )
@@ -140,9 +142,9 @@ def plot_memory(rows, output):
         for j, method in enumerate(METHODS):
             vals = [r[field] / 1024 for r in rows if r["method"] == method]
             bars = ax.bar(
-                np.arange(len(KEY_DIMS)) + (j - 1) * 0.265,
+                np.arange(len(KEY_DIMS)) + (j - (len(METHODS) - 1) / 2) * 0.32,
                 vals,
-                width=0.245,
+                width=0.29,
                 color=COLORS[method],
                 label=LABELS[method],
             )
@@ -159,7 +161,7 @@ def plot_memory(rows, output):
         labels,
         loc="upper left",
         bbox_to_anchor=(0.073, 0.814),
-        ncol=3,
+        ncol=len(METHODS),
         frameon=False,
     )
     fig.text(

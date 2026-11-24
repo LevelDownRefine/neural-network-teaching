@@ -1,7 +1,5 @@
 from .run import KEY_DIMS, PAIR_COUNTS, REPEATS
 
-RIDGE = 0.01
-
 
 def plot_results(rows, output):
     import matplotlib
@@ -27,7 +25,6 @@ def plot_results(rows, output):
         "Delta": ("Delta 0.5", "#24578A", "o", "-"),
         "Delta_lr1": ("Delta 1.0", "#916F3C", "^", "--"),
         "Delta_decay": ("递减步长 Delta", "#13796D", "D", "-"),
-        "RLS": ("岭回归 RLS", "#AF4331", "s", "-"),
     }
     fig, axes = plt.subplots(2, 3, figsize=(12.0, 6.9), sharey="row")
     fig.subplots_adjust(
@@ -39,7 +36,7 @@ def plot_results(rows, output):
     fig.text(
         0.082,
         0.886,
-        f"相同配对与顺序    ·    每组 {REPEATS} 次随机重复    ·    岭正则 λ = {RIDGE}",
+        f"各方法使用相同的键值和写入顺序，每组独立重复 {REPEATS} 次。",
         fontsize=10,
         color="#43545F",
     )
@@ -93,7 +90,7 @@ def plot_results(rows, output):
         labels,
         loc="upper left",
         bbox_to_anchor=(0.074, 0.858),
-        ncol=5,
+        ncol=len(styles),
         frameon=False,
         fontsize=10,
         columnspacing=1.6,
@@ -101,7 +98,7 @@ def plot_results(rows, output):
     fig.text(
         0.082,
         0.044,
-        "递减步长 Delta 只增加步数计数。RLS 在写入时另外维护一个 d × d 的 FP32 矩阵。",
+        "原版 Delta 的步长为 0.5。递减步长取 d/(d+t−1)，t 从 1 开始计数。",
         fontsize=10,
         color="#43545F",
     )
