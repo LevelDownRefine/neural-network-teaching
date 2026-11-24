@@ -1,0 +1,55 @@
+{
+  "repository": "https://github.com/ntumm120/preconditioned-deltanet",
+  "commit": "7bd753279af87b39114149a104c5bde9bf67145f",
+  "official_path": "3rdparty/flash-linear-attention/fla/ops/precond_gated_delta_rule/naive.py",
+  "git_blob": "4a2273f25a89b509332e8755391e78cc594a16b0",
+  "official_function": "naive_recurrent_precond_gated_delta_rule",
+  "torch": "2.15.0+cpu",
+  "numpy": "1.26.4",
+  "device": "cpu",
+  "dtype": "float32",
+  "threads": 1,
+  "seed": 20261120,
+  "repeats": 200,
+  "keys": [
+    32,
+    64,
+    128
+  ],
+  "pairs": [
+    8,
+    16,
+    32,
+    64,
+    128
+  ],
+  "value_dim": 32,
+  "passes": 1,
+  "scoring": "all original full cues against the frozen final W",
+  "pdn": {
+    "heads": 1,
+    "g": 0,
+    "g_atk": 0,
+    "beta": 0.5,
+    "beta_atk": 1,
+    "scale": 1.0,
+    "x": 1.5,
+    "eps": 1e-06,
+    "log_atk_scale": -0.2,
+    "initial_states": "zero",
+    "trained_gates": false
+  },
+  "delta_eta": 0.5,
+  "methods": [
+    "Delta",
+    "PDN"
+  ],
+  "baseline_check": "covered by small deterministic regression tests",
+  "paired_interval": "mean across 200 independent batches +/- 1.96 paired SE, per comparison",
+  "peak_measurement": "single-stream CPU tensor allocation peak over 32 one-pair writes, two identical runs",
+  "validation": {
+    "max_abs_pdn_minus_scalar_score": 1.3113021850585938e-06,
+    "scalar_bit_disagreements": 0,
+    "tested_bits": 4761600
+  }
+}

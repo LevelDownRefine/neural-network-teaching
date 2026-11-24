@@ -1,4 +1,4 @@
-"""在实验一相同配对上对照固定与递减步长 Delta、RLS 和必做基线。
+"""在实验一相同配对上对照固定与递减步长 Delta 与作业基线。
 
 所有方法在相同的逐对输入上写一遍，再用相同的完整线索和单一矩阵 W 检索。
 写入预算按必须跨样本保留的 FP32 矩阵计。标量、临时张量和评估数据另计。
@@ -32,8 +32,7 @@ from associative_memory.train import DeltaTrainer
 from . import OUTPUT_DIR
 from .optimized_writes_curves import plot_results
 
-RIDGE = 0.01
-RULES = (*METHODS, "Delta_lr1", "Delta_decay", "RLS")
+RULES = (*METHODS, "Delta_lr1", "Delta_decay")
 FRESH_REPEATS = 100
 FRESH_CONDITIONS = ((64, 32), (32, 128))
 
@@ -44,21 +43,6 @@ def fit_delta(keys, values, rates):
     for key, value, rate in zip(keys, values, rates, strict=True):
         trainer.optimizer.param_groups[0]["lr"] = rate
         trainer.step({"q": key}, value)
-    return model
-
-
-@torch.no_grad()
-def fit_rls(keys, values, ridge=RIDGE):
-    """递归岭回归，无遗忘。逆矩阵从 I/λ 开始，更新只使用当前的键和值。"""
-    d = keys.shape[1]
-    model = ModelMemory(d=d, m=values.shape[1])
-    inverse_gram = torch.eye(d, dtype=keys.dtype) / ridge
-    for key, value in zip(keys, values, strict=True):
-        direction = inverse_gram @ key
-        inverse_denom = (1.0 + torch.dot(key, direction)).reciprocal()
-        residual = value - model(q=key)
-        model.W.add_(torch.outer(residual, direction * inverse_denom))
-        inverse_gram.sub_(torch.outer(direction, direction) * inverse_denom)
     return model
 
 
@@ -77,32 +61,16 @@ def run_paired_trial(d, p, repeat_index):
 
     constant = fit_delta(keys, values, repeat(1.0, p))
     decreasing = fit_delta(keys, values, (d / (d + t) for t in range(p)))
-    rls = fit_rls(keys, values)
     constant_metrics, _ = evaluate(constant, keys, targets)
     decreasing_metrics, _ = evaluate(decreasing, keys, targets)
-    rls_metrics, rls_scores = evaluate(rls, keys, targets)
-
-    # 只在写完后以 FP64 批量求解同一岭回归问题，独立核验在线实现。
-    x = keys.double().numpy()
-    gram = x.T @ x
-    gram[np.diag_indices(d)] += RIDGE
-    solution = np.linalg.solve(gram, x.T @ targets)
-    batch_scores = x @ solution
-    np.testing.assert_allclose(rls_scores, batch_scores, atol=4e-4, rtol=2e-4)
-    discrepancy = np.max(np.abs(rls_scores - batch_scores))
-    all_metrics = np.vstack(
-        (baselines, constant_metrics, decreasing_metrics, rls_metrics)
-    )
-    return all_metrics, discrepancy
+    return np.vstack((baselines, constant_metrics, decreasing_metrics))
 
 
 def compare_condition(d, p, indices, split):
     n = len(indices)
     values = np.empty((n, len(RULES), len(METRICS)))
-    ridge_error = 0.0
     for index, seed_index in enumerate(indices):
-        values[index], discrepancy = run_paired_trial(d, p, seed_index)
-        ridge_error = max(ridge_error, discrepancy)
+        values[index] = run_paired_trial(d, p, seed_index)
     avg = values.mean(axis=0)
     sd = values.std(axis=0, ddof=1)
     base = values[:, RULES.index("Delta"), :]
@@ -113,10 +81,8 @@ def compare_condition(d, p, indices, split):
         "Zero": "",
         "Delta_lr1": "1",
         "Delta_decay": "d/(d+t-1), t=1..P",
-        "RLS": "",
     }
     for i, rule in enumerate(RULES):
-        extra = d * d if rule == "RLS" else 0
         row = {
             "split": split,
             "d": d,
@@ -129,14 +95,13 @@ def compare_condition(d, p, indices, split):
             "first_repeat_index": indices.start,
             "last_repeat_index": indices.stop - 1,
             "learning_rate": rates[rule],
-            "ridge_lambda": RIDGE if rule == "RLS" else "",
             "write_passes": 1,
             "weight_updates": 0 if rule == "Zero" else p,
             "weights_dtype": "float32",
             "read_weight_scalars": VALUE_DIM * d,
-            "write_extra_matrix_scalars": extra,
+            "write_extra_matrix_scalars": 0,
             "read_weight_bytes": 4 * VALUE_DIM * d,
-            "write_persistent_matrix_bytes": 4 * (VALUE_DIM * d + extra),
+            "write_persistent_matrix_bytes": 4 * VALUE_DIM * d,
         }
         for j, metric in enumerate(METRICS):
             row[f"{metric}_mean"] = avg[i, j]
@@ -152,7 +117,6 @@ def compare_condition(d, p, indices, split):
             row[label] = center
             row[f"{label}_ci95_low"] = center - half_width
             row[f"{label}_ci95_high"] = center + half_width
-        row["max_rls_vs_batch_abs_score_error"] = ridge_error if rule == "RLS" else ""
         rows.append(row)
     print(f"{split}   d={d:3d}  P={p:3d}   {n} 次配对重复", flush=True)
     return rows
