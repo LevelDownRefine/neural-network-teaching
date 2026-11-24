@@ -1,4 +1,4 @@
-# 实验 3：学新会不会忘旧，回放能否改善？
+# 实验三：学新会不会忘旧，回放能否改善？
 
 使用小组的 [公共关联记忆模型](https://github.com/LevelDownRefine/neural-network-teaching/tree/74948f8c8224587a06c136f8a6f12c3ca59d1a60/associative_memory)。记忆存在 32×64 的权重矩阵 W 中，给定线索 k，计算 Wk 并取符号来恢复 32 位内容。用 Delta 规则逐对更新 W，学习率 0.5。
 
@@ -14,7 +14,7 @@
 | 每条 B 后回放一条 A，池容量 16 | 99.88% | 50.02% | 84.70% | 97.50% |
 | 每条 B 后回放一条 A，池容量 32 | 99.88% | 50.02% | 93.39% | 95.83% |
 
-![实验3：A/B 正确率轨迹与池内外比较](results/replay_results.png)
+![实验三：A/B 正确率轨迹与池内外比较](../output/experiment3/replay_results.png)
 
 前两图的横轴 0 表示刚学完 A，1–4 表示学完 B 的遍数。右图比较 B 学完后进入回放池与未进入回放池的 A 样本。阴影和误差棒表示 200 次试验的均值 ± 一个样本标准差。
 
@@ -52,10 +52,10 @@ A、B 使用同一权重矩阵，随机线索一般并不正交。写入 B 会�
 在仓库根目录运行。实验在 CPU 上完成，默认重复 200 次，根随机种子为 42。
 
 ```bash
-uv run --locked --extra cpu python -m associative_memory.ex3.run --output associative_memory/ex3/results
+uv run --locked --extra cpu python -m associative_memory.experiment3.run
 ```
 
 - [实验脚本](run.py)调用仓库的 `ModelMemory`、`DeltaTrainer`、`train_epoch` 和 `generate_pairs`。
-- [检查点汇总](results/accuracy_summary.csv)包含均值、样本标准差和每阶段更新次数。准确率列以 0–1 表示。
-- [逐次试验](results/accuracy_by_trial.csv)包含每次试验的 25 个检查点。
-- [更新与存储统计](results/update_and_storage_cost.csv)记录各条件的实际张量字节与更新次数。
+- [检查点汇总](../output/experiment3/accuracy_summary.csv)包含均值、样本标准差和每阶段更新次数。准确率列以 0–1 表示。
+- [逐次试验](../output/experiment3/accuracy_by_trial.csv)包含每次试验的 25 个检查点。
+- [更新与存储统计](../output/experiment3/update_and_storage_cost.csv)记录各条件的实际张量字节与更新次数。
