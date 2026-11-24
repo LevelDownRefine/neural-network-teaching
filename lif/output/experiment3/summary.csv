@@ -1,0 +1,4 @@
+tau_ms,spike_count,average_rate_Hz,first_spike_ms,mean_ISI_ms
+10,126,63.0,13.8,15.8
+20,67,33.5,27.7,29.7
+40,34,17.0,55.4,57.4

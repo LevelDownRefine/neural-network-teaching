@@ -1,0 +1,3 @@
+input,mean_current_nA,spike_count,average_rate_Hz
+Constant current,2.019941479422586,68,34.0
+Synaptic current,2.019941479422586,60,30.0
