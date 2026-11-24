@@ -1,0 +1,21 @@
+{
+  "baseline": {
+    "mode": "constant",
+    "current": 2.0,
+    "amplitude": 0.8,
+    "frequency": 5.0,
+    "phase": 0.0,
+    "threshold": -50.0,
+    "rest": -65.0,
+    "tau": 20.0,
+    "resistance": 10.0,
+    "refractory": 2.0,
+    "dt": 0.1,
+    "duration": 2000.0
+  },
+  "tau_ms": [
+    10,
+    20,
+    40
+  ]
+}

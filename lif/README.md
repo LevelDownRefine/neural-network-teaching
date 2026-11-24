@@ -1,15 +1,13 @@
-# LIF 神经元仿真
+# Homework 2 · Section 1：LIF
 
-[查看作业题目](homework-2.pdf)。
+[作业题目](homework-2.pdf)。环境：`uv sync --locked --extra cpu`。
 
-打开 [neuron_dynamics.ipynb](neuron_dynamics.ipynb)，使用项目 Python 3.12 环境依次运行。Notebook 从 Euler 更新开始，展示膜电位、阈值、重置和不应期；后续实验不包含在本文件中。
+| 项目 | 入口 |
+| --- | --- |
+| 模型与四信号展示 | [Notebook](neuron_dynamics.ipynb)、[Rust 模拟器](simulator/README.md) |
+| 实验一：阈值 | [说明与结果](experiment1/README.md) |
+| 实验二：电流 | [说明](experiment2/README.md) |
+| 实验三：膜时间常数 | [说明](experiment3/README.md) |
+| 扩展 A：突触电流 | [说明](bonus_a/README.md) |
 
-```bash
-uv sync --locked --extra cpu
-```
-
-在 VS Code 等支持 Jupyter 的编辑器中选择项目的 `.venv` 内核。
-
-## 交互模拟器
-
-见 [simulator](simulator/README.md)：Rust 原生界面、共享仿真核心及 Windows exe 发布流程。
+模型保留在 model.py，绘图保留在 plot_lif.py；各实验的输出统一放 output 对应目录。Notebook 使用项目环境内核，从头执行。
