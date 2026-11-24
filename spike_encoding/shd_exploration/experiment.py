@@ -19,7 +19,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "shd_data"
-OUT = ROOT.parent / "output" / "task3_baseline"
+OUT = ROOT.parent / "output" / "task3_exploration"
 
 
 def load(path, indices, steps, bin_ms):

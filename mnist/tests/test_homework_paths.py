@@ -15,7 +15,7 @@ DOCUMENTS = [
     "spike_encoding/README.md",
     "spike_encoding/task1/encoding.ipynb",
     "spike_encoding/task3/spikcommander_evaluation.ipynb",
-    "spike_encoding/shd_baseline/README.md",
+    "spike_encoding/shd_exploration/README.md",
 ]
 
 
