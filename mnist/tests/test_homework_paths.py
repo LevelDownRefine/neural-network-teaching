@@ -11,10 +11,10 @@ ROOT = Path(__file__).resolve().parents[2]
 DOCUMENTS = [
     "lif/README.md",
     "lif/neuron_dynamics.ipynb",
-    "lif/threshold_effect/threshold_effect.ipynb",
+    "lif/experiment1/threshold_effect.ipynb",
     "spike_encoding/README.md",
-    "spike_encoding/encoding_and_membrane_dynamics.ipynb",
-    "spike_encoding/shd_spikcommander_evaluation.ipynb",
+    "spike_encoding/task1/encoding.ipynb",
+    "spike_encoding/task3/spikcommander_evaluation.ipynb",
     "spike_encoding/shd_baseline/README.md",
 ]
 

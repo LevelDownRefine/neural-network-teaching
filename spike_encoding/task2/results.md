@@ -24,7 +24,7 @@
 | Latency | 99.05% | 99.27% | 98.33% | 95.57% |
 | Phase | 98.77% | 99.19% | 99.22% | 99.14% |
 
-![准确率与时间步](figures/accuracy_vs_steps.png)
+![准确率与时间步](../output/task2/accuracy_vs_steps.png)
 
 **不同编码方式是否影响分类性能？为什么？**
 
@@ -46,7 +46,7 @@
 | Latency | 151 | 151 | 151 | 151 |
 | Phase | 105 | 151 | 407 | 756 |
 
-![输入层脉冲数量与时间步](figures/input_spikes_vs_steps.png)
+![输入层脉冲数量与时间步](../output/task2/input_spikes_vs_steps.png)
 
 **第一隐藏层**
 
@@ -56,13 +56,13 @@
 | Latency | 1,794 | 2,096 | 11,541 | 28,141 |
 | Phase | 1,932 | 2,173 | 6,076 | 9,327 |
 
-![第一隐藏层脉冲数量与时间步](figures/hidden_spikes_vs_steps.png)
+![第一隐藏层脉冲数量与时间步](../output/task2/hidden_spikes_vs_steps.png)
 
 **脉冲数量更少，是否一定意味着计算效率更高？**
 
 不一定。输入层稀疏不代表隐藏层同样稀疏：Latency 输入层始终约 151 个脉冲／图，第一隐藏层却从 10 步的 1,794 个增至 100 步的 28,141 个。本实现使用稠密算子，零值不会自动省去相应计算；100 步下三种编码的纯模型每批耗时都约为 11 ms。脉冲数量也不能直接等同于能耗。
 
-![准确率与输入脉冲数量](figures/accuracy_vs_spikes.png)
+![准确率与输入脉冲数量](../output/task2/accuracy_vs_spikes.png)
 
 **静态视觉任务能否兼顾准确率、低延迟与稀疏性？**
 
