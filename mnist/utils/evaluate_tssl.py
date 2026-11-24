@@ -8,6 +8,7 @@ import yaml
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from classification_metrics import calculate
+from encoding import encode_input
 from utils.io import atomic_write_json
 
 root = Path(__file__).resolve().parent.parent
@@ -36,7 +37,7 @@ ys = []
 scores = []
 with torch.no_grad():
     for x, y in loader:
-        x = x.cuda().unsqueeze(-1).repeat(1, 1, 1, 1, nc["n_steps"])
+        x = encode_input(x.cuda(), nc["n_steps"])
         output = net.forward(x, ck["epoch"] - 1, False)
         scores.append(output.sum(dim=4).squeeze(-1).squeeze(-1).cpu().numpy())
         ys.append(y.numpy())

@@ -63,6 +63,10 @@ CNN 和 TSSL 按轮保存检查点；用相同参数加 `--resume` 续训。`--m
 
 SNN 可加 `--ema` 使用权重平均，加 `--augment` 启用训练集旋转和平移。当前训练使用 snnTorch 代理梯度，结果保存在 `snntorch_*`，不会覆盖历史 TSSL-BP 结果。
 
+`encode_input(images, steps, method=...)` 支持 `repeat`、`rate`、`latency`、`phase`、`rank_order` 和 `population`，统一输入批量 Tensor 并返回时间维度在最后的 Tensor；`population` 将输入通道数乘以神经元数量，不能直接输入现有单通道 TSSL 首层。当前训练与评估默认使用 `repeat`，将标准化的连续图像复制到各时间步。[脉冲编码 Notebook](../spike_encoding/encoding_and_membrane_dynamics.ipynb) 使用同一函数展示五种脉冲方式；它们需要 [0, 1] 的原始像素强度，尚未接入训练。
+
+脉冲编码会校验像素范围，GPU 上会产生一次同步，不能直接放入 `fullgraph=True` 的编译区域；可先编码，再调用编译后的 SNN，并在计时结果中说明是否包含编码。`repeat` 不受此限制。
+
 历史官方协议使用测试集选模，已移除对应训练入口；历史结果仅供参考。
 
 ## 评估

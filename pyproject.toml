@@ -54,18 +54,18 @@ members = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["mnist/tests", "lif/tests"]
+testpaths = ["mnist/tests", "lif/tests", "associative_memory/tests"]
 pythonpath = ["mnist", "."]
 
 [tool.ruff]
 target-version = "py312"
-extend-exclude = ["mnist/models/tssl"]
+extend-exclude = ["mnist/models/tssl", "associative_memory/tests/reference"]
 
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "I"]
 
 [tool.ruff.lint.per-file-ignores]
 "lif/model.py" = ["E741"] # I represents current in the equation
-"lif/task1_lif.ipynb" = ["E741"] # I represents current in the equation
+"lif/neuron_dynamics.ipynb" = ["E741"] # I represents current in the equation
 "mnist/train_tssl.py" = ["E402", "I001"]
 "mnist/utils/evaluate_tssl.py" = ["E402", "I001"]

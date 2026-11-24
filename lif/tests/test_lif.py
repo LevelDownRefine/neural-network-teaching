@@ -9,7 +9,9 @@ import torch
 @pytest.fixture(scope="module")
 def simulate():
     notebook = json.loads(
-        (Path(__file__).parents[1] / "task1_lif.ipynb").read_text(encoding="utf-8")
+        (Path(__file__).parents[1] / "neuron_dynamics.ipynb").read_text(
+            encoding="utf-8"
+        )
     )
     namespace = {}
     for cell in notebook["cells"]:
