@@ -4,21 +4,21 @@
 
 ## 运行
 
-在仓库根目录执行以下命令即可从头生成全部对照结果。程序会先计算所需基线。
+在仓库根目录执行以下命令生成 PDN、Delta 与 RLS 对照。两个入口各自计算所需方法，不依赖另一个入口的 CSV。
 
 ```shell
-uv run --locked --extra cpu python -m associative_memory.paper_comparison.preconditioned
+uv run --locked --extra cpu python -m associative_memory.experiment1.preconditioned
 ```
 
 如只需要固定步长 Delta、递减步长 Delta 和 RLS 的比较，可以单独运行下列命令。
 
 ```shell
-uv run --locked --extra cpu python -m associative_memory.paper_comparison.optimized_writes
+uv run --locked --extra cpu python -m associative_memory.experiment1.optimized_writes
 ```
 
 ## 如何读结果
 
-结果保存在 `associative_memory/output/paper_comparison/`。
+结果保存在 `associative_memory/output/experiment1/`。
 
 | 文件 | 内容 |
 | --- | --- |
